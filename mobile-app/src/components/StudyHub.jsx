@@ -31,9 +31,9 @@ const StudyHub = () => {
 
   const notesStats = getNotesStats()
   const flashcardsStats = getFlashcardsStats()
-  const dueCards = getDueCards()
 
-  const startDailyReview = () => {
+  const startDailyReview = async () => {
+    const dueCards = await getDueCards()
     if (dueCards.length > 0) {
       setStudySession({
         cards: dueCards,
@@ -42,11 +42,11 @@ const StudyHub = () => {
     }
   }
 
-  const startDeckStudy = (deckId) => {
+  const startDeckStudy = async (deckId) => {
     const deck = decks.find(d => d.id === deckId)
     if (!deck) return
 
-    const cards = getCardsByDeck(deckId)
+    const cards = await getCardsByDeck(deckId)
     const dueCardsForDeck = cards.filter(card =>
       new Date(card.nextReviewDate) <= new Date()
     )
@@ -302,33 +302,30 @@ const StudyHub = () => {
           </div>
         ) : (
           <div className="space-y-3">
-            {decks.slice(0, 3).map((deck) => {
-              const dueCount = getDueCards(deck.id).length
-              return (
-                <div
-                  key={deck.id}
-                  onClick={() => startDeckStudy(deck.id)}
-                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-dark-bg-tertiary transition-all cursor-pointer active:scale-95"
-                >
-                  <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-primary-500/20 flex items-center justify-center border border-primary-500/30">
-                    <svg className="w-4 h-4 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                    </svg>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-dark-text-primary text-sm truncate">{deck.title}</div>
-                    <div className="text-dark-text-secondary text-xs">
-                      {deck.cardIds.length} cards • {deck.subject}
-                    </div>
-                  </div>
-                  {dueCount > 0 && (
-                    <div className="px-2 py-1 rounded-lg bg-accent-purple/20 border border-accent-purple/30">
-                      <span className="text-accent-purple-light text-xs font-bold">{dueCount}</span>
-                    </div>
-                  )}
+            {decks.slice(0, 3).map((deck) => (
+              <div
+                key={deck.id}
+                onClick={() => startDeckStudy(deck.id)}
+                className="flex items-center gap-3 p-3 rounded-xl hover:bg-dark-bg-tertiary transition-all cursor-pointer active:scale-95"
+              >
+                <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-primary-500/20 flex items-center justify-center border border-primary-500/30">
+                  <svg className="w-4 h-4 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
                 </div>
-              )
-            })}
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-dark-text-primary text-sm truncate">{deck.title}</div>
+                  <div className="text-dark-text-secondary text-xs">
+                    {deck.cardIds.length} cards • {deck.subject}
+                  </div>
+                </div>
+                <div className="text-dark-text-muted text-xs flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
