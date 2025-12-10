@@ -17,27 +17,78 @@ const AI_CONFIG = {
   groqApiKey: import.meta.env.VITE_GROQ_API_KEY || '',
 }
 
+// Usage limits
+const FREE_TIER_LIMIT = 3
+const PRO_TIER_LIMIT = 250
+const USAGE_KEY = 'ai_chat_usage_count'
+
 class AIService {
   constructor() {
     this.conversationHistory = []
-    this.systemPrompt = `You are an expert AI tutor for students. Your role is to:
+    // Mobile-optimized system prompt for concise responses
+    this.systemPrompt = `You are an expert AI tutor for students on a mobile app. Your role is to help with homework, concepts, and studying.
 
-1. Help students understand academic concepts clearly and thoroughly
-2. Provide step-by-step explanations for complex topics
-3. Create practice problems and quiz questions
-4. Offer study strategies and learning tips
-5. Be encouraging, patient, and supportive
-6. Adapt your explanations to the student's level of understanding
+CRITICAL - Mobile optimization rules:
+- Keep responses BRIEF (1-2 short paragraphs max, 3-5 sentences)
+- Use bullet points and lists for clarity
+- Be direct and to-the-point
+- Avoid lengthy explanations unless specifically asked
+- Use simple formatting (**, -, numbers only)
 
 Guidelines:
-- Keep responses concise but thorough (2-4 paragraphs max)
-- Use examples and analogies to clarify concepts
-- Break down complex topics into simpler parts
-- Ask follow-up questions to check understanding
-- Use proper formatting for formulas and equations
-- Be positive and motivating
+- Answer the specific question asked
+- Give examples when helpful
+- Be encouraging but concise
+- If topic is complex, give overview first, offer to elaborate
 
-You're helping middle school, high school, and early college students succeed academically.`
+Remember: Students are on mobile - keep it SHORT and scannable!`
+  }
+
+  /**
+   * Get current usage count
+   */
+  getUsageCount() {
+    return parseInt(localStorage.getItem(USAGE_KEY) || '0', 10)
+  }
+
+  /**
+   * Increment usage count
+   */
+  incrementUsage() {
+    const current = this.getUsageCount()
+    localStorage.setItem(USAGE_KEY, String(current + 1))
+    return current + 1
+  }
+
+  /**
+   * Reset usage count (for pro users or monthly reset)
+   */
+  resetUsage() {
+    localStorage.setItem(USAGE_KEY, '0')
+  }
+
+  /**
+   * Check if user has remaining requests
+   */
+  hasRemainingRequests() {
+    return this.getUsageCount() < FREE_TIER_LIMIT
+  }
+
+  /**
+   * Get remaining requests
+   */
+  getRemainingRequests() {
+    return Math.max(0, FREE_TIER_LIMIT - this.getUsageCount())
+  }
+
+  /**
+   * Get usage limits
+   */
+  getLimits() {
+    return {
+      free: FREE_TIER_LIMIT,
+      pro: PRO_TIER_LIMIT,
+    }
   }
 
   /**
@@ -147,10 +198,10 @@ You're helping middle school, high school, and early college students succeed ac
           'Authorization': `Bearer ${AI_CONFIG.groqApiKey}`,
         },
         body: JSON.stringify({
-          model: 'llama-3.1-70b-versatile',
+          model: 'llama-3.3-70b-versatile',
           messages: messages,
           temperature: 0.7,
-          max_tokens: 600,
+          max_tokens: 300, // Reduced for mobile-optimized concise responses
           top_p: 1,
         }),
       })

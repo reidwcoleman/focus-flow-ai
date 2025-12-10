@@ -87,7 +87,7 @@ serve(async (req) => {
         model: 'llama-3.3-70b-versatile',
         messages: groqMessages,
         temperature: 0.7,
-        max_tokens: 600,
+        max_tokens: 300, // Reduced for mobile-optimized concise responses
         top_p: 1,
       }),
     })

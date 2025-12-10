@@ -14,8 +14,18 @@ const AITutor = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
   const [error, setError] = useState('')
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [usageCount, setUsageCount] = useState(aiService.getUsageCount())
   const lastMessageRef = useRef(null)
   const textareaRef = useRef(null)
+
+  // Check usage limit on component mount
+  useEffect(() => {
+    const hasRequests = aiService.hasRemainingRequests()
+    if (!hasRequests) {
+      setShowUpgradeModal(true)
+    }
+  }, [])
 
   // Auto-scroll to top of last message when new AI responses arrive
   useEffect(() => {
@@ -51,6 +61,12 @@ const AITutor = () => {
   const handleSend = async () => {
     if (!inputValue.trim() || isLoading) return
 
+    // Check usage limit before sending
+    if (!aiService.hasRemainingRequests()) {
+      setShowUpgradeModal(true)
+      return
+    }
+
     const userMessage = inputValue.trim()
     setInputValue('')
     setError('')
@@ -77,6 +93,10 @@ const AITutor = () => {
         aiResponse = await aiService.getDemoResponse(userMessage)
       }
 
+      // Increment usage count after successful response
+      const newCount = aiService.incrementUsage()
+      setUsageCount(newCount)
+
       // Add AI response
       const newAiMessage = {
         id: Date.now() + 1,
@@ -85,6 +105,11 @@ const AITutor = () => {
         timestamp: new Date(),
       }
       setMessages(prev => [...prev, newAiMessage])
+
+      // Check if this was the last free request
+      if (!aiService.hasRemainingRequests()) {
+        setTimeout(() => setShowUpgradeModal(true), 1000)
+      }
     } catch (err) {
       console.error('AI Error:', err)
       setError(err.message || 'Failed to get response. Please try again.')
@@ -182,6 +207,24 @@ const AITutor = () => {
             <svg className="w-5 h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
+          </button>
+        </div>
+
+        {/* Usage Counter */}
+        <div className="mt-3 flex items-center justify-between px-3 py-2 bg-gradient-to-r from-primary-50 to-accent-purple/5 rounded-xl border border-primary-100">
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            <span className="text-sm font-medium text-neutral-700">
+              {aiService.getRemainingRequests()} / {aiService.getLimits().free} free chats left
+            </span>
+          </div>
+          <button
+            onClick={() => setShowUpgradeModal(true)}
+            className="text-xs font-semibold text-accent-purple hover:text-accent-purple-dark transition-colors"
+          >
+            Upgrade
           </button>
         </div>
       </div>
@@ -325,6 +368,95 @@ const AITutor = () => {
           </button>
         </div>
       </div>
+
+      {/* Upgrade Modal */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 animate-fadeInUp">
+            {/* Icon */}
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-accent-purple to-accent-purple-dark flex items-center justify-center shadow-glow">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+            </div>
+
+            {/* Title */}
+            <h3 className="text-2xl font-bold text-neutral-900 text-center mb-2">
+              Upgrade to Pro
+            </h3>
+
+            {/* Description */}
+            <p className="text-neutral-600 text-center mb-6">
+              You've used all your free AI chats. Upgrade to Pro for 250 chats per month plus exclusive features!
+            </p>
+
+            {/* Features List */}
+            <div className="space-y-3 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-accent-purple/10 flex items-center justify-center">
+                  <svg className="w-3 h-3 text-accent-purple" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <span className="text-sm text-neutral-700 font-medium">250 AI chats per month</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-accent-purple/10 flex items-center justify-center">
+                  <svg className="w-3 h-3 text-accent-purple" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <span className="text-sm text-neutral-700 font-medium">Priority support</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-accent-purple/10 flex items-center justify-center">
+                  <svg className="w-3 h-3 text-accent-purple" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <span className="text-sm text-neutral-700 font-medium">Advanced study analytics</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-accent-purple/10 flex items-center justify-center">
+                  <svg className="w-3 h-3 text-accent-purple" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <span className="text-sm text-neutral-700 font-medium">Export study notes</span>
+              </div>
+            </div>
+
+            {/* Pricing */}
+            <div className="bg-gradient-to-r from-primary-50 to-accent-purple/5 rounded-xl p-4 mb-6 border border-primary-100">
+              <div className="flex items-baseline justify-center gap-1">
+                <span className="text-3xl font-bold text-neutral-900">$4.99</span>
+                <span className="text-neutral-600 font-medium">/month</span>
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  // In a real app, this would navigate to payment flow
+                  alert('Payment integration coming soon! Pro features will be available shortly.')
+                }}
+                className="w-full py-3.5 bg-gradient-to-r from-accent-purple to-accent-purple-dark hover:from-accent-purple-dark hover:to-accent-purple-dark text-white font-semibold rounded-xl shadow-soft-md hover:shadow-glow transition-all duration-200 active:scale-98"
+              >
+                Upgrade Now
+              </button>
+              <button
+                onClick={() => setShowUpgradeModal(false)}
+                className="w-full py-3 text-neutral-600 hover:text-neutral-900 font-medium transition-colors"
+              >
+                Maybe Later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
