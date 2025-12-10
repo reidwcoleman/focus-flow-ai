@@ -293,15 +293,35 @@ const StudyHub = () => {
 
             {/* Modal Content */}
             <div className="p-6 overflow-y-auto max-h-[calc(85vh-140px)]">
-              {/* Note Content */}
-              <div className="prose prose-sm max-w-none">
-                <div className="whitespace-pre-wrap text-neutral-800 leading-relaxed">
-                  {selectedNote.content}
+              {/* Note Content with Enhanced Typography */}
+              <div className="mb-6">
+                <div
+                  className="text-neutral-900 leading-loose text-base"
+                  style={{
+                    whiteSpace: 'pre-wrap',
+                    wordWrap: 'break-word',
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                    lineHeight: '1.8',
+                    letterSpacing: '0.01em'
+                  }}
+                >
+                  {selectedNote.content
+                    .replace(/\.\.\./g, '')
+                    .replace(/\/\/\//g, '')
+                    .replace(/---/g, '')
+                    .trim()
+                    .split('\n')
+                    .map((line, index) => (
+                      <p key={index} className="mb-4 last:mb-0">
+                        {line.trim() || '\u00A0'}
+                      </p>
+                    ))
+                  }
                 </div>
               </div>
 
               {/* Note Metadata */}
-              <div className="mt-6 pt-6 border-t border-neutral-200">
+              <div className="pt-6 border-t border-neutral-200">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <div className="text-neutral-500 font-medium mb-1">Created</div>
