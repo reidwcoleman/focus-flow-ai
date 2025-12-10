@@ -1,12 +1,12 @@
 /**
  * Vision AI Service for Focus Flow
- * Handles OCR and image analysis using Groq Llama 3.2 90B Vision
+ * Handles OCR and image analysis using Groq Llama 4 Scout
  */
 
 const VISION_CONFIG = {
   groqApiKey: import.meta.env.VITE_GROQ_API_KEY || '',
   groqEndpoint: 'https://api.groq.com/openai/v1/chat/completions',
-  visionModel: 'llama-3.2-90b-vision-preview',
+  visionModel: 'meta-llama/llama-4-scout-17b-16e-instruct',
   maxTokens: 2000,
   temperature: 0.3, // Lower for more consistent extraction
 }
