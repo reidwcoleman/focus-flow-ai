@@ -15,16 +15,22 @@ const AITutor = () => {
   const [isTyping, setIsTyping] = useState(false)
   const [error, setError] = useState('')
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
-  const [usageCount, setUsageCount] = useState(aiService.getUsageCount())
+  const [usageCount, setUsageCount] = useState(0)
   const lastMessageRef = useRef(null)
   const textareaRef = useRef(null)
 
   // Check usage limit on component mount
   useEffect(() => {
-    const hasRequests = aiService.hasRemainingRequests()
-    if (!hasRequests) {
-      setShowUpgradeModal(true)
+    const checkUsage = async () => {
+      const count = await aiService.getUsageCount()
+      setUsageCount(count)
+
+      const hasRequests = await aiService.hasRemainingRequests()
+      if (!hasRequests) {
+        setShowUpgradeModal(true)
+      }
     }
+    checkUsage()
   }, [])
 
   // Auto-scroll to top of last message when new AI responses arrive
@@ -62,7 +68,8 @@ const AITutor = () => {
     if (!inputValue.trim() || isLoading) return
 
     // Check usage limit before sending
-    if (!aiService.hasRemainingRequests()) {
+    const hasRequests = await aiService.hasRemainingRequests()
+    if (!hasRequests) {
       setShowUpgradeModal(true)
       return
     }
@@ -94,7 +101,7 @@ const AITutor = () => {
       }
 
       // Increment usage count after successful response
-      const newCount = aiService.incrementUsage()
+      const newCount = await aiService.incrementUsage()
       setUsageCount(newCount)
 
       // Add AI response
@@ -107,7 +114,8 @@ const AITutor = () => {
       setMessages(prev => [...prev, newAiMessage])
 
       // Check if this was the last free request
-      if (!aiService.hasRemainingRequests()) {
+      const hasRequests = await aiService.hasRemainingRequests()
+      if (!hasRequests) {
         setTimeout(() => setShowUpgradeModal(true), 1000)
       }
     } catch (err) {
@@ -217,7 +225,7 @@ const AITutor = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
             <span className="text-sm font-medium text-dark-text-primary">
-              {aiService.getRemainingRequests()} / {aiService.getLimits().free} free chats left
+              {aiService.getLimits().free - usageCount} / {aiService.getLimits().free} free chats left
             </span>
           </div>
           <button

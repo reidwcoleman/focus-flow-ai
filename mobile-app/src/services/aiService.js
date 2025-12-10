@@ -3,6 +3,9 @@
  * Uses Supabase Edge Function to securely proxy AI requests
  */
 
+import supabase from '../lib/supabase'
+import authService from './authService'
+
 const AI_CONFIG = {
   // Supabase Edge Function URL
   // Replace with your actual Supabase project URL
@@ -20,13 +23,13 @@ const AI_CONFIG = {
 // Usage limits
 const FREE_TIER_LIMIT = 3
 const PRO_TIER_LIMIT = 250
-const USAGE_KEY = 'ai_chat_usage_count'
 
 class AIService {
   constructor() {
     this.conversationHistory = []
-    // Mobile-optimized system prompt for concise responses
-    this.systemPrompt = `You are an expert AI tutor for students on a mobile app. Your role is to help with homework, concepts, and studying.
+    this.userContext = null
+    // Base system prompt (will be enhanced with user context)
+    this.baseSystemPrompt = `You are an expert AI tutor for students on a mobile app. Your role is to help with homework, concepts, and studying.
 
 CRITICAL - Mobile optimization rules:
 - Keep responses BRIEF (1-2 short paragraphs max, 3-5 sentences)
@@ -45,40 +48,166 @@ Remember: Students are on mobile - keep it SHORT and scannable!`
   }
 
   /**
-   * Get current usage count
+   * Get system prompt with user context
    */
-  getUsageCount() {
-    return parseInt(localStorage.getItem(USAGE_KEY) || '0', 10)
+  getSystemPrompt() {
+    if (!this.userContext) {
+      return this.baseSystemPrompt
+    }
+
+    let contextPrompt = this.baseSystemPrompt + '\n\n**STUDENT CONTEXT:**\n'
+
+    // Add grades/classes info
+    if (this.userContext.grades && this.userContext.grades.length > 0) {
+      contextPrompt += `\nClasses & Current Grades:\n`
+      this.userContext.grades.forEach(g => {
+        contextPrompt += `- ${g.subject}: ${g.current}%\n`
+      })
+    }
+
+    // Add schedule info
+    if (this.userContext.schedule && this.userContext.schedule.length > 0) {
+      contextPrompt += `\nToday's Schedule:\n`
+      this.userContext.schedule.forEach(s => {
+        contextPrompt += `- ${s.time}: ${s.title} (${s.subject})\n`
+      })
+    }
+
+    // Add recent notes
+    if (this.userContext.notes && this.userContext.notes.length > 0) {
+      contextPrompt += `\nRecent Study Notes (${this.userContext.notes.length} total):\n`
+      this.userContext.notes.slice(0, 3).forEach(note => {
+        contextPrompt += `- ${note.subject}: ${note.title}\n`
+      })
+    }
+
+    // Add flashcard decks
+    if (this.userContext.decks && this.userContext.decks.length > 0) {
+      contextPrompt += `\nFlashcard Decks (${this.userContext.decks.length} total):\n`
+      this.userContext.decks.slice(0, 3).forEach(deck => {
+        contextPrompt += `- ${deck.subject}: ${deck.title} (${deck.cardCount} cards)\n`
+      })
+    }
+
+    contextPrompt += `\nUse this context to personalize responses, reference their classes, and suggest relevant study materials!`
+
+    return contextPrompt
   }
 
   /**
-   * Increment usage count
+   * Load user context (grades, notes, decks, schedule)
    */
-  incrementUsage() {
-    const current = this.getUsageCount()
-    localStorage.setItem(USAGE_KEY, String(current + 1))
-    return current + 1
+  async loadUserContext() {
+    const userId = authService.getUserId()
+    if (!userId) {
+      this.userContext = null
+      return
+    }
+
+    try {
+      // Load notes
+      const { data: notes } = await supabase
+        .from('notes')
+        .select('id, title, subject, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(5)
+
+      // Load flashcard decks with card count
+      const { data: decks } = await supabase
+        .from('decks')
+        .select('id, title, subject, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(5)
+
+      // Get card counts for each deck
+      if (decks && decks.length > 0) {
+        for (const deck of decks) {
+          const { count } = await supabase
+            .from('flashcards')
+            .select('*', { count: 'exact', head: true })
+            .eq('deck_id', deck.id)
+          deck.cardCount = count || 0
+        }
+      }
+
+      // TODO: Load grades from Canvas when available
+      // For now, use placeholder
+      const grades = []
+
+      // TODO: Load schedule from plan
+      const schedule = []
+
+      this.userContext = {
+        notes: notes || [],
+        decks: decks || [],
+        grades,
+        schedule,
+      }
+    } catch (error) {
+      console.error('Failed to load user context:', error)
+      this.userContext = null
+    }
   }
 
   /**
-   * Reset usage count (for pro users or monthly reset)
+   * Get current usage count from Supabase
    */
-  resetUsage() {
-    localStorage.setItem(USAGE_KEY, '0')
+  async getUsageCount() {
+    const profile = authService.getUserProfile()
+    if (!profile) {
+      // Fallback to localStorage for non-authenticated users
+      return parseInt(localStorage.getItem('ai_chat_usage_count') || '0', 10)
+    }
+    return profile.ai_chats_used_this_month || 0
+  }
+
+  /**
+   * Increment usage count in Supabase
+   */
+  async incrementUsage() {
+    const userId = authService.getUserId()
+    if (!userId) {
+      // Fallback to localStorage
+      const current = await this.getUsageCount()
+      localStorage.setItem('ai_chat_usage_count', String(current + 1))
+      return current + 1
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('increment_ai_usage', {
+        user_uuid: userId
+      })
+
+      if (error) throw error
+
+      // Refresh user profile to get updated count
+      await authService.refreshUserProfile()
+
+      return data
+    } catch (error) {
+      console.error('Failed to increment usage:', error)
+      return await this.getUsageCount()
+    }
   }
 
   /**
    * Check if user has remaining requests
    */
-  hasRemainingRequests() {
-    return this.getUsageCount() < FREE_TIER_LIMIT
+  async hasRemainingRequests() {
+    const usage = await this.getUsageCount()
+    const limit = authService.getAiChatLimit()
+    return usage < limit
   }
 
   /**
    * Get remaining requests
    */
-  getRemainingRequests() {
-    return Math.max(0, FREE_TIER_LIMIT - this.getUsageCount())
+  async getRemainingRequests() {
+    const usage = await this.getUsageCount()
+    const limit = authService.getAiChatLimit()
+    return Math.max(0, limit - usage)
   }
 
   /**
@@ -129,6 +258,11 @@ Remember: Students are on mobile - keep it SHORT and scannable!`
       throw new Error('Supabase URL not configured. Add VITE_SUPABASE_URL to .env')
     }
 
+    // Load user context if not already loaded
+    if (!this.userContext && authService.isAuthenticated()) {
+      await this.loadUserContext()
+    }
+
     // Add user message to history
     this.conversationHistory.push({
       role: 'user',
@@ -145,7 +279,7 @@ Remember: Students are on mobile - keep it SHORT and scannable!`
         },
         body: JSON.stringify({
           messages: this.conversationHistory.slice(-10), // Last 10 messages
-          systemPrompt: this.systemPrompt,
+          systemPrompt: this.getSystemPrompt(),
         }),
       })
 
@@ -179,6 +313,11 @@ Remember: Students are on mobile - keep it SHORT and scannable!`
       throw new Error('Groq API key not configured')
     }
 
+    // Load user context if not already loaded
+    if (!this.userContext && authService.isAuthenticated()) {
+      await this.loadUserContext()
+    }
+
     // Add user message to history
     this.conversationHistory.push({
       role: 'user',
@@ -187,7 +326,7 @@ Remember: Students are on mobile - keep it SHORT and scannable!`
 
     try {
       const messages = [
-        { role: 'system', content: this.systemPrompt },
+        { role: 'system', content: this.getSystemPrompt() },
         ...this.conversationHistory.slice(-10),
       ]
 

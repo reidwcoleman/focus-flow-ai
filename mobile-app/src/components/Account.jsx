@@ -25,7 +25,10 @@ export default function Account() {
     const { user } = await authService.getCurrentUser()
     setUser(user)
 
+    // Refresh profile from server
+    await authService.refreshUserProfile()
     const profile = authService.getUserProfile()
+
     setProfile(profile)
     setNewName(profile?.full_name || user?.email?.split('@')[0] || '')
     setCanvasUrl(profile?.canvas_url || '')
@@ -45,7 +48,8 @@ export default function Account() {
       const result = await authService.updateUserProfile({ full_name: newName.trim() })
 
       if (result.error) {
-        setError('Failed to update name')
+        console.error('Update error:', result.error)
+        setError(`Failed to update name: ${result.error.message || 'Unknown error'}`)
       } else {
         setSuccess('Name updated successfully!')
         setIsEditingName(false)
@@ -53,7 +57,8 @@ export default function Account() {
         setTimeout(() => setSuccess(''), 3000)
       }
     } catch (err) {
-      setError('Failed to update name')
+      console.error('Update exception:', err)
+      setError(`Failed to update name: ${err.message || 'Unknown error'}`)
     } finally {
       setSaving(false)
     }

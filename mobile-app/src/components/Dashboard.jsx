@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import canvasService from '../services/canvasService'
+import authService from '../services/authService'
 
 const Dashboard = ({ onOpenScanner }) => {
+  const [userName, setUserName] = useState('there')
   const [assignments, setAssignments] = useState([
     {
       id: 1,
@@ -37,8 +39,26 @@ const Dashboard = ({ onOpenScanner }) => {
   const [isLoadingCanvas, setIsLoadingCanvas] = useState(false)
 
   useEffect(() => {
+    loadUserName()
     loadCanvasAssignments()
   }, [])
+
+  const loadUserName = async () => {
+    const { user } = await authService.getCurrentUser()
+    await authService.refreshUserProfile()
+    const profile = authService.getUserProfile()
+
+    // Use full_name if available, otherwise use email username
+    const name = profile?.full_name || user?.email?.split('@')[0] || 'there'
+    setUserName(name)
+  }
+
+  const getTimeOfDayGreeting = () => {
+    const hour = new Date().getHours()
+    if (hour < 12) return 'Good morning'
+    if (hour < 18) return 'Good afternoon'
+    return 'Good evening'
+  }
 
   const loadCanvasAssignments = async () => {
     if (canvasService.isConnected()) {
@@ -139,7 +159,7 @@ const Dashboard = ({ onOpenScanner }) => {
             <div className="w-2 h-2 rounded-full bg-primary-500 animate-pulse-soft shadow-glow-cyan"></div>
             <span className="text-dark-text-primary text-sm font-medium tracking-tight">AI Active</span>
           </div>
-          <h2 className="text-2xl font-bold text-dark-text-primary mb-1.5 tracking-tight">Good afternoon, Alex</h2>
+          <h2 className="text-2xl font-bold text-dark-text-primary mb-1.5 tracking-tight">{getTimeOfDayGreeting()}, {userName}</h2>
           <p className="text-dark-text-secondary text-sm">You have 3 assignments due this week</p>
         </div>
 
