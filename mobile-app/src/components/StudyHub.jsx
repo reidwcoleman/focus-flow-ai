@@ -309,11 +309,19 @@ const StudyHub = () => {
                     .replace(/\.\.\./g, '')
                     .replace(/\/\/\//g, '')
                     .replace(/---/g, '')
+                    .replace(/\*\*/g, '')
+                    .replace(/##/g, '')
+                    .replace(/#/g, '')
+                    .replace(/\*/g, '')
+                    .replace(/_/g, '')
+                    .replace(/~/g, '')
+                    .replace(/`/g, '')
                     .trim()
                     .split('\n')
+                    .filter(line => line.trim())
                     .map((line, index) => (
                       <p key={index} className="mb-4 last:mb-0">
-                        {line.trim() || '\u00A0'}
+                        {line.trim()}
                       </p>
                     ))
                   }
