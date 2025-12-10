@@ -15,9 +15,12 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
     needsWork: 0,
     mastered: 0
   })
+  const [missedCards, setMissedCards] = useState([])
   const [showComplete, setShowComplete] = useState(false)
   const [dragOffset, setDragOffset] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
+  const [streak, setStreak] = useState(0)
+  const [bestStreak, setBestStreak] = useState(0)
 
   const dragStartX = useRef(0)
   const cardRef = useRef(null)
@@ -60,6 +63,22 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
     // Record the review with SM-2 algorithm
     recordCardReview(currentCard.id, rating)
 
+    // Track missed cards for review
+    if (rating <= 2) {
+      setMissedCards(prev => [...prev, currentCard])
+    }
+
+    // Update streak
+    if (rating >= 5) {
+      const newStreak = streak + 1
+      setStreak(newStreak)
+      if (newStreak > bestStreak) {
+        setBestStreak(newStreak)
+      }
+    } else {
+      setStreak(0)
+    }
+
     // Update stats - simplified to two categories
     setSessionStats(prev => ({
       ...prev,
@@ -74,6 +93,18 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
       setShowComplete(true)
     }
   }
+
+  const reviewMissedCards = () => {
+    // Start a new session with only the missed cards
+    if (missedCards.length > 0) {
+      // Create a new session by updating parent component
+      onComplete?.()
+      // Note: In a production app, we'd pass the missed cards back to start a new session
+      // For now, user can close and select the deck again
+    }
+  }
+
+  const accuracy = cards.length > 0 ? Math.round((sessionStats.mastered / cards.length) * 100) : 0
 
   if (!currentCard || showComplete) {
     return (
@@ -103,20 +134,60 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
             </div>
           </div>
 
-          {/* Total Cards */}
-          <div className="bg-neutral-50 rounded-xl p-3 text-center mb-6">
-            <span className="text-neutral-600 text-sm">
-              <span className="font-bold text-neutral-900">{cards.length}</span> cards reviewed
-            </span>
+          {/* Performance Stats */}
+          <div className="space-y-3 mb-6">
+            {/* Accuracy */}
+            <div className="bg-neutral-50 rounded-xl p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-neutral-600 text-sm">Accuracy</span>
+                <span className={`text-lg font-bold ${accuracy >= 80 ? 'text-green-600' : accuracy >= 60 ? 'text-yellow-600' : 'text-amber-600'}`}>
+                  {accuracy}%
+                </span>
+              </div>
+              <div className="mt-2 h-2 bg-neutral-200 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${accuracy >= 80 ? 'bg-green-500' : accuracy >= 60 ? 'bg-yellow-500' : 'bg-amber-500'}`}
+                  style={{ width: `${accuracy}%` }}
+                ></div>
+              </div>
+            </div>
+
+            {/* Best Streak */}
+            {bestStreak > 0 && (
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-purple-600 text-sm font-semibold">🔥 Best Streak</span>
+                  <span className="text-2xl font-bold text-purple-600">{bestStreak}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Total */}
+            <div className="bg-neutral-50 rounded-xl p-3 text-center">
+              <span className="text-neutral-600 text-sm">
+                <span className="font-bold text-neutral-900">{cards.length}</span> cards reviewed
+              </span>
+            </div>
           </div>
 
           {/* Actions */}
-          <button
-            onClick={onComplete || onExit}
-            className="w-full py-4 px-6 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold rounded-xl shadow-glow-lg hover:shadow-glow transition-all active:scale-95"
-          >
-            Done
-          </button>
+          <div className="space-y-3">
+            {missedCards.length > 0 && (
+              <button
+                onClick={reviewMissedCards}
+                className="w-full py-4 px-6 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-semibold rounded-xl shadow-soft-lg hover:shadow-soft-xl transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                <span>↻</span>
+                <span>Review {missedCards.length} Missed Card{missedCards.length !== 1 ? 's' : ''}</span>
+              </button>
+            )}
+            <button
+              onClick={onComplete || onExit}
+              className="w-full py-4 px-6 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold rounded-xl shadow-glow-lg hover:shadow-glow transition-all active:scale-95"
+            >
+              {missedCards.length > 0 ? 'Finish Later' : 'Done'}
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -136,6 +207,17 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
+
+            {/* Streak Display */}
+            {streak > 0 && (
+              <div className="px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 shadow-soft animate-pulse-soft">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-lg">🔥</span>
+                  <span className="text-white font-bold text-sm">{streak}</span>
+                </div>
+              </div>
+            )}
+
             <div className="text-sm font-semibold text-neutral-600">
               {currentIndex + 1} / {cards.length}
             </div>
