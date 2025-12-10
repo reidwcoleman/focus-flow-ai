@@ -137,10 +137,14 @@ const Scanner = ({ onClose, onCapture, initialScanMode = 'homework' }) => {
 
   const saveNotes = () => {
     if (notesData) {
-      // Save note to StudyContext
+      // Save note to StudyContext with clean text content (not JSON)
+      const noteContent = typeof notesData.formattedContent === 'string' && notesData.formattedContent.includes('{')
+        ? notesData.rawText  // If formattedContent looks like JSON, use rawText instead
+        : (notesData.formattedContent || notesData.rawText)
+
       addNote({
-        title: notesData.title,
-        content: notesData.formattedContent,
+        title: notesData.customTitle || notesData.title,
+        content: noteContent,
         rawText: notesData.rawText,
         sourceImage: capturedImage,
         subject: notesData.subject,
@@ -431,6 +435,18 @@ const Scanner = ({ onClose, onCapture, initialScanMode = 'homework' }) => {
 
                   {/* Notes Card */}
                   <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-5 border border-white/20">
+                    {/* Editable Title Input */}
+                    <div className="mb-4">
+                      <label className="block text-white/70 text-sm font-medium mb-2">Note Title</label>
+                      <input
+                        type="text"
+                        defaultValue={notesData.title}
+                        onChange={(e) => { notesData.customTitle = e.target.value }}
+                        placeholder="Enter a name for your note..."
+                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-accent-purple/50 transition-all"
+                      />
+                    </div>
+
                     <div className="flex items-start gap-3 mb-4">
                       <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-accent-purple to-accent-pink flex items-center justify-center shadow-glow-purple">
                         <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -438,7 +454,6 @@ const Scanner = ({ onClose, onCapture, initialScanMode = 'homework' }) => {
                         </svg>
                       </div>
                       <div className="flex-1">
-                        <h3 className="text-white font-bold text-lg mb-1">{notesData.title}</h3>
                         <div className="flex items-center gap-3 text-sm text-white/70">
                           <span>{notesData.subject}</span>
                           {notesData.tags && notesData.tags.length > 0 && (
@@ -454,7 +469,10 @@ const Scanner = ({ onClose, onCapture, initialScanMode = 'homework' }) => {
                     {/* Formatted Content Preview */}
                     <div className="bg-white/5 rounded-xl p-4 mb-4 max-h-60 overflow-y-auto scrollbar-thin">
                       <div className="text-white/90 text-sm leading-relaxed whitespace-pre-wrap">
-                        {notesData.formattedContent || notesData.rawText}
+                        {(typeof notesData.formattedContent === 'string' && notesData.formattedContent.includes('{'))
+                          ? notesData.rawText
+                          : (notesData.formattedContent || notesData.rawText)
+                        }
                       </div>
                     </div>
 
