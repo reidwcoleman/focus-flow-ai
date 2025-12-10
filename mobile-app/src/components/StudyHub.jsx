@@ -3,7 +3,7 @@
  * Central hub for Notes and Flashcards features
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useStudy } from '../contexts/StudyContext'
 import StudySession from './StudySession'
 
@@ -28,9 +28,19 @@ const StudyHub = () => {
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editedTitle, setEditedTitle] = useState('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [notesStats, setNotesStats] = useState({ totalNotes: 0 })
+  const [flashcardsStats, setFlashcardsStats] = useState({ totalDecks: 0 })
 
-  const notesStats = getNotesStats()
-  const flashcardsStats = getFlashcardsStats()
+  // Load stats on mount and when notes/decks change
+  useEffect(() => {
+    const loadStats = async () => {
+      const nStats = await getNotesStats()
+      const fStats = await getFlashcardsStats()
+      setNotesStats(nStats)
+      setFlashcardsStats(fStats)
+    }
+    loadStats()
+  }, [notes, decks, getNotesStats, getFlashcardsStats])
 
   const startDailyReview = async () => {
     const dueCards = await getDueCards()
