@@ -15,9 +15,9 @@ function App() {
   const tabs = [
     { id: 'dashboard', label: 'Home', icon: 'home' },
     { id: 'planner', label: 'Plan', icon: 'calendar' },
+    { id: 'scan', label: 'Scan', icon: 'camera', isCenter: true },
     { id: 'tutor', label: 'AI', icon: 'sparkles' },
     { id: 'analytics', label: 'Stats', icon: 'chart' },
-    { id: 'settings', label: 'Settings', icon: 'settings' },
   ]
 
   const handleCaptureAssignment = (assignment) => {
@@ -26,8 +26,8 @@ function App() {
     console.log('Assignment captured:', assignment)
   }
 
-  const getIcon = (icon, isActive) => {
-    const className = "w-6 h-6"
+  const getIcon = (icon, isActive, isCenter = false) => {
+    const className = isCenter ? "w-7 h-7" : "w-6 h-6"
     const strokeWidth = isActive ? 2.5 : 2
 
     switch (icon) {
@@ -41,6 +41,13 @@ function App() {
         return (
           <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        )
+      case 'camera':
+        return (
+          <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
         )
       case 'sparkles':
@@ -83,14 +90,42 @@ function App() {
         {activeTab === 'planner' && <Planner />}
         {activeTab === 'tutor' && <AITutor />}
         {activeTab === 'analytics' && <Analytics />}
-        {activeTab === 'settings' && <Settings />}
       </div>
 
-      {/* Bottom Navigation - Premium iOS Style */}
+      {/* Bottom Navigation - Premium iOS Style with Center Scan Button */}
       <nav className="fixed bottom-0 left-0 right-0 glass-effect border-t border-neutral-200/60 safe-area-inset-bottom shadow-soft-lg">
-        <div className="max-w-md mx-auto flex justify-around items-center px-1">
+        <div className="max-w-md mx-auto flex justify-around items-end px-1 relative">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id
+            const isCenter = tab.isCenter
+
+            // Center scan button gets special treatment
+            if (isCenter) {
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setShowScanner(true)
+                    setActiveTab('dashboard') // Go back to dashboard after opening scanner
+                  }}
+                  className="relative flex-1 flex flex-col items-center -mt-8 transition-all duration-200 active:scale-95"
+                >
+                  {/* Large Blue Square Container */}
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 shadow-soft-xl flex items-center justify-center mb-1 border-4 border-white">
+                    <div className="text-white">
+                      {getIcon(tab.icon, true, true)}
+                    </div>
+                  </div>
+
+                  {/* Label */}
+                  <span className="text-[11px] font-semibold tracking-tight text-primary-600">
+                    {tab.label}
+                  </span>
+                </button>
+              )
+            }
+
+            // Regular nav buttons
             return (
               <button
                 key={tab.id}
@@ -110,7 +145,7 @@ function App() {
                     ? 'text-primary-600'
                     : 'text-neutral-500 active:text-neutral-600'
                 }`}>
-                  {getIcon(tab.icon, isActive)}
+                  {getIcon(tab.icon, isActive, false)}
                 </div>
 
                 {/* Label */}
