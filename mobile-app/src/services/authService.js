@@ -275,7 +275,7 @@ class AuthService {
 
     try {
       // First check if profile exists
-      const { data: existingProfile } = await supabase
+      const { data: existingProfile, error: fetchError } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('id', this.currentUser.id)
@@ -283,7 +283,8 @@ class AuthService {
 
       let result
 
-      if (existingProfile) {
+      // Check if profile exists (fetchError will be PGRST116 if not found)
+      if (existingProfile || (fetchError && fetchError.code !== 'PGRST116')) {
         // Update existing profile
         result = await supabase
           .from('user_profiles')
@@ -295,11 +296,12 @@ class AuthService {
           .select()
           .single()
       } else {
-        // Create new profile
+        // Create new profile - include required email field
         result = await supabase
           .from('user_profiles')
           .insert({
             id: this.currentUser.id,
+            email: this.currentUser.email, // Required field
             ...updates,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
