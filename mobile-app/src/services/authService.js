@@ -9,6 +9,7 @@ class AuthService {
   constructor() {
     this.currentUser = null
     this.session = null
+    this.userProfile = null
     this._loadSession()
   }
 
@@ -21,8 +22,33 @@ class AuthService {
       const { data: { session } } = await supabase.auth.getSession()
       this.session = session
       this.currentUser = session?.user || null
+
+      // Load user profile if authenticated
+      if (this.currentUser) {
+        await this._loadUserProfile()
+      }
     } catch (error) {
       console.error('Failed to load session:', error)
+    }
+  }
+
+  /**
+   * Load user profile from Supabase
+   * @private
+   */
+  async _loadUserProfile() {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', this.currentUser.id)
+        .single()
+
+      if (error) throw error
+      this.userProfile = data
+    } catch (error) {
+      console.error('Failed to load user profile:', error)
+      this.userProfile = null
     }
   }
 
@@ -72,6 +98,9 @@ class AuthService {
 
       this.currentUser = data.user
       this.session = data.session
+
+      // Load user profile
+      await this._loadUserProfile()
 
       return { user: data.user, session: data.session, error: null }
     } catch (error) {
@@ -194,6 +223,99 @@ class AuthService {
     } catch (error) {
       console.error('Update password error:', error)
       return { user: null, error }
+    }
+  }
+
+  /**
+   * Get user profile
+   * @returns {Object|null}
+   */
+  getUserProfile() {
+    return this.userProfile
+  }
+
+  /**
+   * Check if user is pro
+   * @returns {boolean}
+   */
+  isPro() {
+    return this.userProfile?.is_pro || false
+  }
+
+  /**
+   * Get AI chat limit for current user
+   * @returns {number}
+   */
+  getAiChatLimit() {
+    return this.isPro() ? 250 : 3
+  }
+
+  /**
+   * Refresh user profile
+   * @returns {Promise<{profile, error}>}
+   */
+  async refreshUserProfile() {
+    if (!this.currentUser) {
+      return { profile: null, error: new Error('No user logged in') }
+    }
+
+    await this._loadUserProfile()
+    return { profile: this.userProfile, error: null }
+  }
+
+  /**
+   * Update user profile
+   * @param {Object} updates - Profile fields to update (full_name, canvas_url, etc.)
+   * @returns {Promise<{profile, error}>}
+   */
+  async updateUserProfile(updates) {
+    if (!this.currentUser) {
+      return { profile: null, error: new Error('No user logged in') }
+    }
+
+    try {
+      // First check if profile exists
+      const { data: existingProfile } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', this.currentUser.id)
+        .single()
+
+      let result
+
+      if (existingProfile) {
+        // Update existing profile
+        result = await supabase
+          .from('user_profiles')
+          .update({
+            ...updates,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', this.currentUser.id)
+          .select()
+          .single()
+      } else {
+        // Create new profile
+        result = await supabase
+          .from('user_profiles')
+          .insert({
+            id: this.currentUser.id,
+            ...updates,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single()
+      }
+
+      if (result.error) throw result.error
+
+      // Update local profile
+      this.userProfile = result.data
+      return { profile: result.data, error: null }
+    } catch (error) {
+      console.error('Update profile error:', error)
+      return { profile: null, error }
     }
   }
 }
