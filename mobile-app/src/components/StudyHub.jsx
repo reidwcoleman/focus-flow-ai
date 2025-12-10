@@ -299,10 +299,17 @@ const StudyHub = () => {
 
       {/* Note Viewer Modal */}
       {selectedNote && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden animate-fadeInUp">
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn"
+          onClick={() => setSelectedNote(null)}
+        >
+          <div
+            className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full flex flex-col animate-fadeInUp"
+            style={{ maxHeight: '85vh' }}
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-neutral-200">
+            <div className="flex items-center justify-between p-6 border-b border-neutral-200 flex-shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-accent-purple/10 flex items-center justify-center">
                   <svg className="w-5 h-5 text-accent-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -324,8 +331,8 @@ const StudyHub = () => {
               </button>
             </div>
 
-            {/* Modal Content */}
-            <div className="p-6 overflow-y-auto max-h-[calc(85vh-140px)]">
+            {/* Modal Content - Scrollable */}
+            <div className="p-6 overflow-y-auto flex-1 scrollbar-thin scroll-smooth">
               {/* Note Content with Enhanced Typography */}
               <div className="mb-6">
                 <div
@@ -389,7 +396,7 @@ const StudyHub = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-6 border-t border-neutral-200 flex gap-3">
+            <div className="p-6 border-t border-neutral-200 flex gap-3 flex-shrink-0">
               <button
                 onClick={() => exportNote(selectedNote)}
                 className="flex-1 py-3 px-4 bg-gradient-to-r from-accent-purple to-accent-purple-dark hover:from-accent-purple-dark hover:to-accent-purple-dark text-white font-semibold rounded-xl transition-all active:scale-95 shadow-soft flex items-center justify-center gap-2"
