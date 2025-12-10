@@ -42,8 +42,8 @@ const AuthScreen = ({ onAuthSuccess }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-600 via-accent-purple to-accent-pink flex items-center justify-center p-6">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-8 animate-fadeInUp">
+    <div className="min-h-screen bg-gradient-to-br from-dark-bg-primary via-dark-navy to-dark-navy-light flex items-center justify-center p-6">
+      <div className="w-full max-w-md bg-dark-bg-secondary rounded-3xl shadow-2xl border border-dark-border-glow p-8 animate-fadeInUp">
         {/* Logo/Header */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary-500 to-accent-cyan flex items-center justify-center shadow-glow-cyan">
@@ -51,28 +51,28 @@ const AuthScreen = ({ onAuthSuccess }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
-          <h1 className="text-3xl font-bold text-neutral-900 mb-2">Focus Flow AI</h1>
-          <p className="text-neutral-600">AI-powered study companion</p>
+          <h1 className="text-3xl font-bold text-dark-text-primary mb-2">Focus Flow AI</h1>
+          <p className="text-dark-text-secondary">AI-powered study companion</p>
         </div>
 
         {/* Auth Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Email Input */}
           <div>
-            <label className="block text-neutral-700 text-sm font-semibold mb-2">Email</label>
+            <label className="block text-dark-text-primary text-sm font-semibold mb-2">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               placeholder="you@example.com"
-              className="w-full px-4 py-3 rounded-xl border border-neutral-300 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
+              className="w-full px-4 py-3 rounded-xl bg-dark-bg-tertiary border border-dark-border-glow text-dark-text-primary placeholder:text-dark-text-muted focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
             />
           </div>
 
           {/* Password Input */}
           <div>
-            <label className="block text-neutral-700 text-sm font-semibold mb-2">Password</label>
+            <label className="block text-dark-text-primary text-sm font-semibold mb-2">Password</label>
             <input
               type="password"
               value={password}
@@ -80,14 +80,14 @@ const AuthScreen = ({ onAuthSuccess }) => {
               required
               placeholder="••••••••"
               minLength={6}
-              className="w-full px-4 py-3 rounded-xl border border-neutral-300 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
+              className="w-full px-4 py-3 rounded-xl bg-dark-bg-tertiary border border-dark-border-glow text-dark-text-primary placeholder:text-dark-text-muted focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
             />
           </div>
 
           {/* Error Message */}
           {error && (
-            <div className="p-3 rounded-xl bg-red-50 border border-red-200 animate-fadeIn">
-              <p className="text-red-700 text-sm">{error}</p>
+            <div className="p-3 rounded-xl bg-red-900/20 border border-red-700/40 animate-fadeIn">
+              <p className="text-red-400 text-sm">{error}</p>
             </div>
           )}
 
@@ -115,7 +115,7 @@ const AuthScreen = ({ onAuthSuccess }) => {
               setIsSignUp(!isSignUp)
               setError(null)
             }}
-            className="text-primary-600 hover:text-primary-700 font-semibold transition-colors"
+            className="text-primary-500 hover:text-primary-400 font-semibold transition-colors"
           >
             {isSignUp ? 'Already have an account? Sign in' : 'Need an account? Sign up'}
           </button>
@@ -123,8 +123,8 @@ const AuthScreen = ({ onAuthSuccess }) => {
 
         {/* Info */}
         {isSignUp && (
-          <div className="mt-6 p-4 rounded-xl bg-blue-50 border border-blue-200">
-            <p className="text-blue-800 text-sm text-center">
+          <div className="mt-6 p-4 rounded-xl bg-primary-500/10 border border-primary-500/30">
+            <p className="text-primary-400 text-sm text-center">
               📧 You'll receive a confirmation email after signing up
             </p>
           </div>
