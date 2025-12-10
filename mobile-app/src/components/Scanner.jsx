@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 import visionService from '../services/visionService'
+import { useStudy } from '../contexts/StudyContext'
 
 const Scanner = ({ onClose, onCapture, initialScanMode = 'homework' }) => {
+  const { addNote, addDeckWithCards } = useStudy()
   // Scan mode: homework, notes, flashcards
   const [scanMode, setScanMode] = useState(initialScanMode)
 
@@ -134,15 +136,32 @@ const Scanner = ({ onClose, onCapture, initialScanMode = 'homework' }) => {
   }
 
   const saveNotes = () => {
-    if (notesData && onCapture) {
-      onCapture({ type: 'notes', data: notesData, image: capturedImage })
+    if (notesData) {
+      // Save note to StudyContext
+      addNote({
+        title: notesData.title,
+        content: notesData.formattedContent,
+        rawText: notesData.rawText,
+        sourceImage: capturedImage,
+        subject: notesData.subject,
+        tags: notesData.tags
+      })
       onClose()
     }
   }
 
   const saveFlashcards = () => {
-    if (flashcardsData && onCapture) {
-      onCapture({ type: 'flashcards', data: flashcardsData, image: capturedImage })
+    if (flashcardsData) {
+      // Save deck with cards to StudyContext
+      addDeckWithCards(
+        {
+          title: flashcardsData.title,
+          description: `Generated from scanned image`,
+          subject: flashcardsData.subject,
+          sourceImage: capturedImage
+        },
+        flashcardsData.flashcards
+      )
       onClose()
     }
   }

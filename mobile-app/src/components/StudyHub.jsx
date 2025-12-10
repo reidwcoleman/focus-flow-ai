@@ -1,0 +1,209 @@
+/**
+ * StudyHub Component
+ * Central hub for Notes and Flashcards features
+ */
+
+import { useState } from 'react'
+import { useStudy } from '../contexts/StudyContext'
+
+const StudyHub = () => {
+  const {
+    notes,
+    notesLoading,
+    decks,
+    flashcardsLoading,
+    getDueCards,
+    getNotesStats,
+    getFlashcardsStats
+  } = useStudy()
+
+  const [activeSection, setActiveSection] = useState('overview')
+
+  const notesStats = getNotesStats()
+  const flashcardsStats = getFlashcardsStats()
+  const dueCards = getDueCards()
+
+  return (
+    <div className="space-y-6 pb-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-neutral-900 mb-1">Study Hub</h1>
+          <p className="text-neutral-600">Your notes and flashcards</p>
+        </div>
+      </div>
+
+      {/* Daily Review Widget */}
+      {dueCards.length > 0 && (
+        <div className="bg-gradient-to-br from-accent-purple to-accent-pink rounded-2xl p-6 shadow-soft-lg">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-white font-bold text-lg">Daily Review</h3>
+                <p className="text-white/90 text-sm">{dueCards.length} cards waiting</p>
+              </div>
+            </div>
+            <button className="px-5 py-2.5 bg-white text-accent-purple font-semibold rounded-xl shadow-soft hover:shadow-soft-md transition-all active:scale-95">
+              Start
+            </button>
+          </div>
+          <div className="h-2 bg-white/20 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-white rounded-full transition-all duration-300"
+              style={{ width: '35%' }}
+            ></div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Stats Grid */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Notes Card */}
+        <button
+          onClick={() => setActiveSection('notes')}
+          className="bg-white rounded-2xl p-5 shadow-soft-md hover:shadow-soft-lg transition-all active:scale-95 text-left"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-purple to-accent-pink flex items-center justify-center shadow-glow-purple">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </div>
+          </div>
+          <div className="text-3xl font-bold text-neutral-900 mb-1">
+            {notesLoading ? '...' : notesStats.totalNotes}
+          </div>
+          <div className="text-neutral-600 text-sm font-medium">Notes</div>
+        </button>
+
+        {/* Flashcards Card */}
+        <button
+          onClick={() => setActiveSection('flashcards')}
+          className="bg-white rounded-2xl p-5 shadow-soft-md hover:shadow-soft-lg transition-all active:scale-95 text-left"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-cyan to-primary-500 flex items-center justify-center shadow-soft">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+            </div>
+          </div>
+          <div className="text-3xl font-bold text-neutral-900 mb-1">
+            {flashcardsLoading ? '...' : flashcardsStats.totalDecks}
+          </div>
+          <div className="text-neutral-600 text-sm font-medium">Decks</div>
+        </button>
+      </div>
+
+      {/* Recent Notes Section */}
+      <div className="bg-white rounded-2xl p-5 shadow-soft-md">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-neutral-900">Recent Notes</h3>
+          <button className="text-primary-600 text-sm font-semibold hover:text-primary-700">
+            View All
+          </button>
+        </div>
+
+        {notesLoading ? (
+          <div className="text-center py-8">
+            <div className="inline-block w-8 h-8 border-4 border-primary-500/30 border-t-primary-500 rounded-full animate-spin"></div>
+          </div>
+        ) : notes.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-neutral-100 flex items-center justify-center">
+              <svg className="w-8 h-8 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </div>
+            <p className="text-neutral-500 text-sm mb-1">No notes yet</p>
+            <p className="text-neutral-400 text-xs">Use the scanner to convert handwritten notes</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {notes.slice(0, 3).map((note) => (
+              <div
+                key={note.id}
+                className="flex items-start gap-3 p-3 rounded-xl hover:bg-neutral-50 transition-all cursor-pointer"
+              >
+                <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-accent-purple/10 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-accent-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-neutral-900 text-sm truncate">{note.title}</div>
+                  <div className="text-neutral-500 text-xs">{note.subject}</div>
+                </div>
+                <div className="text-neutral-400 text-xs">
+                  {new Date(note.updatedAt).toLocaleDateString()}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Flashcard Decks Section */}
+      <div className="bg-white rounded-2xl p-5 shadow-soft-md">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-neutral-900">Flashcard Decks</h3>
+          <button className="text-primary-600 text-sm font-semibold hover:text-primary-700">
+            View All
+          </button>
+        </div>
+
+        {flashcardsLoading ? (
+          <div className="text-center py-8">
+            <div className="inline-block w-8 h-8 border-4 border-primary-500/30 border-t-primary-500 rounded-full animate-spin"></div>
+          </div>
+        ) : decks.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-neutral-100 flex items-center justify-center">
+              <svg className="w-8 h-8 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+            </div>
+            <p className="text-neutral-500 text-sm mb-1">No decks yet</p>
+            <p className="text-neutral-400 text-xs">Use the scanner to create flashcards from textbooks</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {decks.slice(0, 3).map((deck) => {
+              const dueCount = getDueCards(deck.id).length
+              return (
+                <div
+                  key={deck.id}
+                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-neutral-50 transition-all cursor-pointer"
+                >
+                  <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-accent-cyan/10 flex items-center justify-center">
+                    <svg className="w-4 h-4 text-accent-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-neutral-900 text-sm truncate">{deck.title}</div>
+                    <div className="text-neutral-500 text-xs">
+                      {deck.cardIds.length} cards • {deck.subject}
+                    </div>
+                  </div>
+                  {dueCount > 0 && (
+                    <div className="px-2 py-1 rounded-lg bg-accent-purple/20">
+                      <span className="text-accent-purple text-xs font-bold">{dueCount}</span>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default StudyHub

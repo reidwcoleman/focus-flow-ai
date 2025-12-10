@@ -5,6 +5,8 @@ import Planner from './components/Planner'
 import Analytics from './components/Analytics'
 import Settings from './components/Settings'
 import Scanner from './components/Scanner'
+import StudyHub from './components/StudyHub'
+import { StudyProvider } from './contexts/StudyContext'
 import './App.css'
 
 function App() {
@@ -18,6 +20,7 @@ function App() {
     { id: 'scan', label: 'Scan', icon: 'camera', isCenter: true },
     { id: 'tutor', label: 'AI', icon: 'sparkles' },
     { id: 'analytics', label: 'Stats', icon: 'chart' },
+    { id: 'study', label: 'Study', icon: 'book' },
   ]
 
   const handleCaptureAssignment = (assignment) => {
@@ -69,28 +72,36 @@ function App() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
         )
+      case 'book':
+        return (
+          <svg className={className} fill={isActive ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+        )
       default:
         return null
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-primary-50/30">
-      {/* Scanner Modal */}
-      {showScanner && (
-        <Scanner
-          onClose={() => setShowScanner(false)}
-          onCapture={handleCaptureAssignment}
-        />
-      )}
+    <StudyProvider>
+      <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-primary-50/30">
+        {/* Scanner Modal */}
+        {showScanner && (
+          <Scanner
+            onClose={() => setShowScanner(false)}
+            onCapture={handleCaptureAssignment}
+          />
+        )}
 
-      {/* Main Content */}
-      <div className="max-w-md mx-auto w-full px-5 pt-6 pb-24 overflow-y-auto">
-        {activeTab === 'dashboard' && <Dashboard onOpenScanner={() => setShowScanner(true)} />}
-        {activeTab === 'planner' && <Planner />}
-        {activeTab === 'tutor' && <AITutor />}
-        {activeTab === 'analytics' && <Analytics />}
-      </div>
+        {/* Main Content */}
+        <div className="max-w-md mx-auto w-full px-5 pt-6 pb-24 overflow-y-auto">
+          {activeTab === 'dashboard' && <Dashboard onOpenScanner={() => setShowScanner(true)} />}
+          {activeTab === 'planner' && <Planner />}
+          {activeTab === 'tutor' && <AITutor />}
+          {activeTab === 'analytics' && <Analytics />}
+          {activeTab === 'study' && <StudyHub />}
+        </div>
 
       {/* Bottom Navigation - Premium iOS Style with Center Scan Button */}
       <nav className="fixed bottom-0 left-0 right-0 glass-effect border-t border-neutral-200/60 safe-area-inset-bottom shadow-soft-lg">
@@ -166,7 +177,8 @@ function App() {
           })}
         </div>
       </nav>
-    </div>
+      </div>
+    </StudyProvider>
   )
 }
 
