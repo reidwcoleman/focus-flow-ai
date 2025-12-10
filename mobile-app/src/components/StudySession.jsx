@@ -21,6 +21,14 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
   const [isDragging, setIsDragging] = useState(false)
   const [streak, setStreak] = useState(0)
   const [bestStreak, setBestStreak] = useState(0)
+  const [showConfetti, setShowConfetti] = useState(false)
+  const [cardExiting, setCardExiting] = useState(null)
+  const [cardEntering, setCardEntering] = useState(false)
+
+  // Session timing
+  const [sessionStartTime] = useState(Date.now())
+  const [cardStartTime, setCardStartTime] = useState(Date.now())
+  const [cardTimes, setCardTimes] = useState([])
 
   const dragStartX = useRef(0)
   const cardRef = useRef(null)
@@ -47,19 +55,33 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
     const threshold = 100
 
     if (Math.abs(dragOffset) > threshold) {
-      if (dragOffset > 0) {
-        // Swipe right - Mastered (rating 5)
-        handleRating(5)
-      } else {
-        // Swipe left - Needs Work (rating 2)
-        handleRating(2)
-      }
+      // Trigger exit animation
+      setCardExiting(dragOffset > 0 ? 'right' : 'left')
+
+      // Wait for animation, then handle rating
+      setTimeout(() => {
+        if (dragOffset > 0) {
+          // Swipe right - Mastered (rating 5)
+          handleRating(5)
+        } else {
+          // Swipe left - Needs Work (rating 2)
+          handleRating(2)
+        }
+        setCardExiting(null)
+        setCardEntering(true)
+        setTimeout(() => setCardEntering(false), 300)
+      }, 300)
     }
 
     setDragOffset(0)
   }
 
   const handleRating = (rating) => {
+    // Track card timing
+    const cardTime = Date.now() - cardStartTime
+    setCardTimes(prev => [...prev, cardTime])
+    setCardStartTime(Date.now())
+
     // Record the review with SM-2 algorithm
     recordCardReview(currentCard.id, rating)
 
@@ -74,6 +96,12 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
       setStreak(newStreak)
       if (newStreak > bestStreak) {
         setBestStreak(newStreak)
+      }
+
+      // Trigger confetti on milestones (5, 10, 15, 20...)
+      if (newStreak % 5 === 0) {
+        setShowConfetti(true)
+        setTimeout(() => setShowConfetti(false), 3000)
       }
     } else {
       setStreak(0)
@@ -105,6 +133,13 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
   }
 
   const accuracy = cards.length > 0 ? Math.round((sessionStats.mastered / cards.length) * 100) : 0
+
+  // Calculate session metrics
+  const sessionDuration = Date.now() - sessionStartTime
+  const sessionMinutes = Math.floor(sessionDuration / 60000)
+  const sessionSeconds = Math.floor((sessionDuration % 60000) / 1000)
+  const avgCardTime = cardTimes.length > 0 ? Math.round(cardTimes.reduce((a, b) => a + b, 0) / cardTimes.length / 1000) : 0
+  const cardsPerMinute = sessionDuration > 0 ? Math.round((cards.length / sessionDuration) * 60000 * 10) / 10 : 0
 
   if (!currentCard || showComplete) {
     return (
@@ -162,6 +197,29 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
               </div>
             )}
 
+            {/* Session Metrics Grid */}
+            <div className="grid grid-cols-3 gap-2">
+              {/* Session Duration */}
+              <div className="bg-blue-50 rounded-xl p-3 text-center">
+                <div className="text-xs text-blue-600 font-semibold mb-1">Time</div>
+                <div className="text-lg font-bold text-blue-600">
+                  {sessionMinutes}:{sessionSeconds.toString().padStart(2, '0')}
+                </div>
+              </div>
+
+              {/* Avg Time per Card */}
+              <div className="bg-indigo-50 rounded-xl p-3 text-center">
+                <div className="text-xs text-indigo-600 font-semibold mb-1">Avg/Card</div>
+                <div className="text-lg font-bold text-indigo-600">{avgCardTime}s</div>
+              </div>
+
+              {/* Speed */}
+              <div className="bg-violet-50 rounded-xl p-3 text-center">
+                <div className="text-xs text-violet-600 font-semibold mb-1">Speed</div>
+                <div className="text-lg font-bold text-violet-600">{cardsPerMinute}/min</div>
+              </div>
+            </div>
+
             {/* Total */}
             <div className="bg-neutral-50 rounded-xl p-3 text-center">
               <span className="text-neutral-600 text-sm">
@@ -195,6 +253,29 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
 
   return (
     <div className="fixed inset-0 z-50 bg-gradient-to-br from-neutral-50 via-white to-primary-50/30">
+      {/* Confetti Celebration */}
+      {showConfetti && (
+        <div className="absolute inset-0 pointer-events-none z-50 overflow-hidden">
+          {[...Array(50)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute animate-confetti"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: '-10px',
+                width: '10px',
+                height: '10px',
+                backgroundColor: ['#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b'][Math.floor(Math.random() * 5)],
+                borderRadius: Math.random() > 0.5 ? '50%' : '0',
+                animationDelay: `${Math.random() * 0.5}s`,
+                animationDuration: `${2 + Math.random() * 2}s`,
+                transform: `rotate(${Math.random() * 360}deg)`
+              }}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 z-10 bg-white/80 backdrop-blur-md border-b border-neutral-200/60 safe-area-inset-top">
         <div className="max-w-md mx-auto px-5 py-4">
@@ -238,16 +319,20 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
       <div className="h-full flex items-center justify-center px-6 pt-32 pb-48">
         <div
           ref={cardRef}
-          className="w-full max-w-sm transition-all duration-200"
+          className={`w-full max-w-sm transition-all ${cardEntering ? 'duration-300' : 'duration-200'}`}
           style={{
-            transform: `translateX(${dragOffset}px) rotate(${dragOffset * 0.05}deg)`,
-            opacity: isDragging ? 0.9 : 1
+            transform: cardExiting
+              ? `translateX(${cardExiting === 'right' ? '150%' : '-150%'}) rotate(${cardExiting === 'right' ? '30deg' : '-30deg'})`
+              : cardEntering
+              ? 'translateX(0) rotate(0deg) scale(0.9)'
+              : `translateX(${dragOffset}px) rotate(${dragOffset * 0.05}deg)`,
+            opacity: cardExiting ? 0 : cardEntering ? 1 : isDragging ? 0.9 : 1
           }}
-          onTouchStart={(e) => handleDragStart(e.touches[0].clientX)}
-          onTouchMove={(e) => handleDragMove(e.touches[0].clientX)}
+          onTouchStart={(e) => !cardExiting && handleDragStart(e.touches[0].clientX)}
+          onTouchMove={(e) => !cardExiting && handleDragMove(e.touches[0].clientX)}
           onTouchEnd={handleDragEnd}
-          onMouseDown={(e) => handleDragStart(e.clientX)}
-          onMouseMove={(e) => isDragging && handleDragMove(e.clientX)}
+          onMouseDown={(e) => !cardExiting && handleDragStart(e.clientX)}
+          onMouseMove={(e) => !cardExiting && isDragging && handleDragMove(e.clientX)}
           onMouseUp={handleDragEnd}
           onMouseLeave={() => {
             if (isDragging) {
@@ -256,7 +341,7 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
             }
           }}
         >
-          <FlashCard card={currentCard} />
+          <FlashCard card={currentCard} showDifficulty={true} />
         </div>
 
         {/* Swipe Indicators */}

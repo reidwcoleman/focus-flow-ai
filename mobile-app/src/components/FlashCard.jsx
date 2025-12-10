@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react'
 
-const FlashCard = ({ card, className = '' }) => {
+const FlashCard = ({ card, className = '', showDifficulty = false }) => {
   const [isFlipped, setIsFlipped] = useState(false)
 
   // Reset flip state when card changes
@@ -16,6 +16,22 @@ const FlashCard = ({ card, className = '' }) => {
   const handleFlip = () => {
     setIsFlipped(!isFlipped)
   }
+
+  // Difficulty badge styling
+  const getDifficultyConfig = (difficulty) => {
+    switch (difficulty?.toLowerCase()) {
+      case 'easy':
+        return { bg: 'bg-green-100', text: 'text-green-700', label: 'Easy' }
+      case 'medium':
+        return { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Medium' }
+      case 'hard':
+        return { bg: 'bg-red-100', text: 'text-red-700', label: 'Hard' }
+      default:
+        return { bg: 'bg-neutral-100', text: 'text-neutral-700', label: 'Medium' }
+    }
+  }
+
+  const difficultyConfig = getDifficultyConfig(card.difficulty)
 
   return (
     <div className={`perspective-1000 ${className}`}>
@@ -34,6 +50,15 @@ const FlashCard = ({ card, className = '' }) => {
           className="absolute inset-0 backface-hidden bg-gradient-to-br from-white to-neutral-50 rounded-3xl p-8 shadow-soft-xl border border-neutral-200/60 flex flex-col"
           style={{ backfaceVisibility: 'hidden' }}
         >
+          {/* Difficulty Badge */}
+          {showDifficulty && card.difficulty && (
+            <div className="absolute top-4 right-4">
+              <div className={`px-2.5 py-1 rounded-full ${difficultyConfig.bg} ${difficultyConfig.text} text-[10px] font-bold uppercase tracking-wide`}>
+                {difficultyConfig.label}
+              </div>
+            </div>
+          )}
+
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <div className="text-neutral-500 text-xs font-bold uppercase tracking-wider mb-3">
