@@ -3,10 +3,15 @@
  * 3D flip animation flashcard with front/back sides
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const FlashCard = ({ card, className = '' }) => {
   const [isFlipped, setIsFlipped] = useState(false)
+
+  // Reset flip state when card changes
+  useEffect(() => {
+    setIsFlipped(false)
+  }, [card.id])
 
   const handleFlip = () => {
     setIsFlipped(!isFlipped)
