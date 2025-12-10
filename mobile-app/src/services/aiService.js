@@ -7,6 +7,7 @@ const AI_CONFIG = {
   // Supabase Edge Function URL
   // Replace with your actual Supabase project URL
   supabaseUrl: import.meta.env.VITE_SUPABASE_URL || 'YOUR_SUPABASE_URL',
+  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || '',
   edgeFunctionUrl: import.meta.env.VITE_SUPABASE_URL
     ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`
     : null,
@@ -88,8 +89,8 @@ You're helping middle school, high school, and early college students succeed ac
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // Optional: Add auth token if you enable authentication
-          // 'Authorization': `Bearer ${supabaseAuthToken}`,
+          'Authorization': `Bearer ${AI_CONFIG.anonKey}`,
+          'apikey': AI_CONFIG.anonKey,
         },
         body: JSON.stringify({
           messages: this.conversationHistory.slice(-10), // Last 10 messages

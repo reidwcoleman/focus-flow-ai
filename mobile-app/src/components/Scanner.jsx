@@ -1,11 +1,26 @@
 import { useState, useRef, useEffect } from 'react'
+import visionService from '../services/visionService'
 
-const Scanner = ({ onClose, onCapture }) => {
-  const [mode, setMode] = useState('camera') // camera, upload, processing
+const Scanner = ({ onClose, onCapture, initialScanMode = 'homework' }) => {
+  // Scan mode: homework, notes, flashcards
+  const [scanMode, setScanMode] = useState(initialScanMode)
+
+  // UI mode: camera, upload, processing, result
+  const [mode, setMode] = useState('camera')
+
+  // Captured data
   const [capturedImage, setCapturedImage] = useState(null)
   const [extractedText, setExtractedText] = useState('')
   const [assignmentData, setAssignmentData] = useState(null)
+  const [notesData, setNotesData] = useState(null)
+  const [flashcardsData, setFlashcardsData] = useState(null)
+
+  // Processing state
   const [isProcessing, setIsProcessing] = useState(false)
+  const [processingStep, setProcessingStep] = useState('')
+  const [error, setError] = useState(null)
+
+  // Refs
   const videoRef = useRef(null)
   const streamRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -65,24 +80,50 @@ const Scanner = ({ onClose, onCapture }) => {
 
   const processImage = async (imageData) => {
     setIsProcessing(true)
+    setError(null)
 
-    // Simulate AI processing (in production, this would call your AI API)
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    try {
+      if (scanMode === 'homework') {
+        // Existing homework mode - keep mock for now
+        setProcessingStep('Analyzing assignment...')
+        await new Promise(resolve => setTimeout(resolve, 2000))
 
-    // Mock extracted data
-    const mockData = {
-      title: 'Chemistry Lab Report: Acid-Base Titration',
-      subject: 'Chemistry',
-      dueDate: '2025-12-15',
-      description: 'Complete lab report analyzing the titration of HCl with NaOH. Include calculations, observations, and error analysis.',
-      estimatedTime: '2h 30m',
-      priority: 'high',
-      confidence: 0.95,
+        const mockData = {
+          title: 'Chemistry Lab Report: Acid-Base Titration',
+          subject: 'Chemistry',
+          dueDate: '2025-12-15',
+          description: 'Complete lab report analyzing the titration of HCl with NaOH. Include calculations, observations, and error analysis.',
+          estimatedTime: '2h 30m',
+          priority: 'high',
+          confidence: 0.95,
+        }
+
+        setExtractedText('📝 Assignment detected!\n\nTitle: Chemistry Lab Report\nDue: December 15, 2025\nSubject: Chemistry\n\nDescription: Complete lab report analyzing the titration of HCl with NaOH...')
+        setAssignmentData(mockData)
+      } else if (scanMode === 'notes') {
+        // Process handwritten notes
+        setProcessingStep('Reading handwriting...')
+        const result = await visionService.processHandwrittenNotes(imageData)
+
+        setNotesData(result)
+        setExtractedText(`📝 Notes Extracted!\n\n${result.title}\n\n${result.rawText}`)
+      } else if (scanMode === 'flashcards') {
+        // Process textbook to flashcards
+        setProcessingStep('Generating flashcards...')
+        const result = await visionService.processTextbookToFlashcards(imageData)
+
+        setFlashcardsData(result)
+        setExtractedText(`🎴 ${result.flashcards.length} Flashcards Created!\n\nDeck: ${result.title}\nSubject: ${result.subject}`)
+      }
+
+      setMode('result')
+    } catch (err) {
+      console.error('Processing error:', err)
+      setError(err.message || 'Failed to process image. Please try again.')
+    } finally {
+      setIsProcessing(false)
+      setProcessingStep('')
     }
-
-    setExtractedText('📝 Assignment detected!\n\nTitle: Chemistry Lab Report\nDue: December 15, 2025\nSubject: Chemistry\n\nDescription: Complete lab report analyzing the titration of HCl with NaOH...')
-    setAssignmentData(mockData)
-    setIsProcessing(false)
   }
 
   const saveAssignment = () => {
@@ -92,10 +133,27 @@ const Scanner = ({ onClose, onCapture }) => {
     }
   }
 
+  const saveNotes = () => {
+    if (notesData && onCapture) {
+      onCapture({ type: 'notes', data: notesData, image: capturedImage })
+      onClose()
+    }
+  }
+
+  const saveFlashcards = () => {
+    if (flashcardsData && onCapture) {
+      onCapture({ type: 'flashcards', data: flashcardsData, image: capturedImage })
+      onClose()
+    }
+  }
+
   const retake = () => {
     setCapturedImage(null)
     setExtractedText('')
     setAssignmentData(null)
+    setNotesData(null)
+    setFlashcardsData(null)
+    setError(null)
     setMode('camera')
     startCamera()
   }
@@ -112,7 +170,7 @@ const Scanner = ({ onClose, onCapture }) => {
     <div className="fixed inset-0 z-50 bg-neutral-900">
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-neutral-900 to-transparent p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-3">
           <button
             onClick={onClose}
             className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/20 transition-all"
@@ -121,9 +179,49 @@ const Scanner = ({ onClose, onCapture }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
-          <h2 className="text-white font-semibold">Scan Homework</h2>
+          <h2 className="text-white font-semibold">
+            {scanMode === 'homework' && 'Scan Homework'}
+            {scanMode === 'notes' && 'Scan Notes'}
+            {scanMode === 'flashcards' && 'Scan Textbook'}
+          </h2>
           <div className="w-10"></div>
         </div>
+
+        {/* Mode Selector */}
+        {mode === 'camera' && (
+          <div className="flex gap-2 px-1">
+            <button
+              onClick={() => setScanMode('homework')}
+              className={`flex-1 py-2 px-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                scanMode === 'homework'
+                  ? 'bg-white text-neutral-900 shadow-soft'
+                  : 'bg-white/10 text-white/70 hover:bg-white/20'
+              }`}
+            >
+              Homework
+            </button>
+            <button
+              onClick={() => setScanMode('notes')}
+              className={`flex-1 py-2 px-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                scanMode === 'notes'
+                  ? 'bg-white text-neutral-900 shadow-soft'
+                  : 'bg-white/10 text-white/70 hover:bg-white/20'
+              }`}
+            >
+              Notes
+            </button>
+            <button
+              onClick={() => setScanMode('flashcards')}
+              className={`flex-1 py-2 px-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                scanMode === 'flashcards'
+                  ? 'bg-white text-neutral-900 shadow-soft'
+                  : 'bg-white/10 text-white/70 hover:bg-white/20'
+              }`}
+            >
+              Flashcards
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Camera View */}
@@ -164,7 +262,9 @@ const Scanner = ({ onClose, onCapture }) => {
             </div>
 
             <p className="text-white/70 text-sm text-center mt-4">
-              Align your homework within the frame
+              {scanMode === 'homework' && 'Align your homework within the frame'}
+              {scanMode === 'notes' && 'Capture your handwritten notes clearly'}
+              {scanMode === 'flashcards' && 'Point at the textbook page or notes'}
             </p>
           </div>
 
