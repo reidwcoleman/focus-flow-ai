@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import visionService from '../services/visionService'
 import { useStudy } from '../contexts/StudyContext'
+import assignmentsService from '../services/assignmentsService'
 
 const Scanner = ({ onClose, onCapture, initialScanMode = 'homework' }) => {
   const { addNote, addDeckWithCards } = useStudy()
@@ -129,29 +130,74 @@ const Scanner = ({ onClose, onCapture, initialScanMode = 'homework' }) => {
     }
   }
 
-  const saveAssignment = () => {
-    if (assignmentData && onCapture) {
-      onCapture(assignmentData)
+  const saveAssignment = async () => {
+    if (!assignmentData) return
+
+    setIsSaving(true)
+    setError(null)
+
+    try {
+      // Save assignment to Supabase
+      const { data, error } = await assignmentsService.createAssignment({
+        title: assignmentData.title,
+        subject: assignmentData.subject,
+        dueDate: assignmentData.dueDate,
+        priority: assignmentData.priority || 'medium',
+        timeEstimate: assignmentData.estimatedTime || assignmentData.timeEstimate,
+        description: assignmentData.description,
+        aiCaptured: true,
+        source: 'scanner',
+      })
+
+      if (error) throw error
+
+      // Also call onCapture if provided (for backwards compatibility)
+      if (onCapture) {
+        onCapture(assignmentData)
+      }
+
       onClose()
+    } catch (err) {
+      console.error('Failed to save assignment:', err)
+      setError('Failed to save assignment. Please try again.')
+    } finally {
+      setIsSaving(false)
     }
   }
 
-  const saveNotes = () => {
+  const saveNotes = async () => {
     if (notesData) {
-      // Save note to StudyContext with clean text content (not JSON)
-      const noteContent = typeof notesData.formattedContent === 'string' && notesData.formattedContent.includes('{')
-        ? notesData.rawText  // If formattedContent looks like JSON, use rawText instead
-        : (notesData.formattedContent || notesData.rawText)
+      setIsSaving(true)
+      setError(null)
 
-      addNote({
-        title: notesData.customTitle || notesData.title,
-        content: noteContent,
-        rawText: notesData.rawText,
-        sourceImage: capturedImage,
-        subject: notesData.subject,
-        tags: notesData.tags
-      })
-      onClose()
+      try {
+        // Save note to StudyContext with clean text content (not JSON)
+        const noteContent = typeof notesData.formattedContent === 'string' && notesData.formattedContent.includes('{')
+          ? notesData.rawText  // If formattedContent looks like JSON, use rawText instead
+          : (notesData.formattedContent || notesData.rawText)
+
+        const result = await addNote({
+          title: notesData.customTitle || notesData.title,
+          content: noteContent,
+          rawText: notesData.rawText,
+          sourceImage: capturedImage,
+          subject: notesData.subject,
+          tags: notesData.tags
+        })
+
+        if (result) {
+          console.log(`✅ Successfully saved note "${result.title}"`)
+          onClose()
+        } else {
+          console.error('❌ Failed to save note')
+          setError('Failed to save note. Please try again.')
+        }
+      } catch (err) {
+        console.error('❌ Error saving note:', err)
+        setError(err.message || 'Failed to save note. Please try again.')
+      } finally {
+        setIsSaving(false)
+      }
     }
   }
 
@@ -513,13 +559,22 @@ const Scanner = ({ onClose, onCapture, initialScanMode = 'homework' }) => {
                   <div className="space-y-3">
                     <button
                       onClick={saveNotes}
-                      className="w-full py-4 px-6 bg-gradient-to-r from-accent-purple to-accent-pink text-white font-semibold rounded-xl shadow-glow-purple hover:shadow-glow transition-all active:scale-95"
+                      disabled={isSaving}
+                      className="w-full py-4 px-6 bg-gradient-to-r from-accent-purple to-accent-pink text-white font-semibold rounded-xl shadow-glow-purple hover:shadow-glow transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Save to My Notes
+                      {isSaving ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          <span>Saving note...</span>
+                        </div>
+                      ) : (
+                        'Save to My Notes'
+                      )}
                     </button>
                     <button
                       onClick={retake}
-                      className="w-full py-3 px-6 bg-white/10 backdrop-blur-sm text-white font-medium rounded-xl border border-white/20 hover:bg-white/20 transition-all active:scale-95"
+                      disabled={isSaving}
+                      className="w-full py-3 px-6 bg-white/10 backdrop-blur-sm text-white font-medium rounded-xl border border-white/20 hover:bg-white/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Retake Photo
                     </button>

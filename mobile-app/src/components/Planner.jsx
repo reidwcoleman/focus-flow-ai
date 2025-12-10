@@ -1,235 +1,393 @@
-const Planner = () => {
-  const studyPlan = [
-    {
-      id: 1,
-      time: '4:00 PM',
-      duration: '45min',
-      title: 'Calculus Problem Set',
-      subject: 'Math',
-      type: 'study',
-      aiSuggested: true,
-      completed: true,
-    },
-    {
-      id: 2,
-      time: '5:00 PM',
-      duration: '30min',
-      title: 'Break & Snack',
-      subject: null,
-      type: 'break',
-      aiSuggested: true,
-      completed: true,
-    },
-    {
-      id: 3,
-      time: '5:30 PM',
-      duration: '1h 15min',
-      title: 'Chemistry Lab Report',
-      subject: 'Chemistry',
-      type: 'study',
-      aiSuggested: true,
-      completed: false,
-      current: true,
-    },
-    {
-      id: 4,
-      time: '6:45 PM',
-      duration: '15min',
-      title: 'Quick Review',
-      subject: 'English',
-      type: 'review',
-      aiSuggested: true,
-      completed: false,
-    },
-    {
-      id: 5,
-      time: '7:00 PM',
-      duration: '1h',
-      title: 'Dinner Break',
-      subject: null,
-      type: 'break',
-      aiSuggested: false,
-      completed: false,
-    },
-  ]
+/**
+ * Planner Component - AI-Optimized Calendar
+ * Smart calendar with AI-powered activity creation
+ */
 
-  const getTypeColor = (type) => {
-    switch (type) {
-      case 'study': return 'from-primary-500 to-primary-600'
-      case 'break': return 'from-green-500 to-emerald-600'
-      case 'review': return 'from-amber-500 to-orange-600'
-      default: return 'from-neutral-400 to-neutral-500'
+import { useState, useEffect } from 'react'
+import calendarService from '../services/calendarService'
+import activityParserService from '../services/activityParserService'
+
+const Planner = () => {
+  const [currentDate, setCurrentDate] = useState(new Date())
+  const [selectedDate, setSelectedDate] = useState(new Date())
+  const [activities, setActivities] = useState([])
+  const [dayActivities, setDayActivities] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [aiInput, setAiInput] = useState('')
+  const [aiProcessing, setAiProcessing] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December']
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+  useEffect(() => {
+    loadActivities()
+  }, [currentDate])
+
+  useEffect(() => {
+    loadDayActivities()
+  }, [selectedDate, activities])
+
+  const loadActivities = async () => {
+    setLoading(true)
+    try {
+      const year = currentDate.getFullYear()
+      const month = currentDate.getMonth()
+      const data = await calendarService.getActivitiesForMonth(year, month)
+      setActivities(data)
+    } catch (err) {
+      console.error('Failed to load activities:', err)
+    } finally {
+      setLoading(false)
     }
   }
 
-  const getTypeIcon = (type) => {
-    switch (type) {
-      case 'study':
-        return (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-          </svg>
-        )
-      case 'break':
-        return (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        )
-      case 'review':
-        return (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        )
-      default:
-        return null
+  const loadDayActivities = () => {
+    const dateStr = selectedDate.toISOString().split('T')[0]
+    const filtered = activities.filter(a => a.activity_date === dateStr)
+    setDayActivities(filtered)
+  }
+
+  const handleAiCreate = async () => {
+    if (!aiInput.trim()) return
+
+    setAiProcessing(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      // Parse activity with AI
+      const activityData = await activityParserService.parseActivity(aiInput)
+
+      // Create activity in database
+      await calendarService.createActivity(activityData)
+
+      // Reload activities
+      await loadActivities()
+
+      // Show success
+      setSuccess(`Created: ${activityData.title}`)
+      setAiInput('')
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (err) {
+      console.error('Failed to create activity:', err)
+      setError('Failed to create activity. Try being more specific.')
+      setTimeout(() => setError(''), 5000)
+    } finally {
+      setAiProcessing(false)
     }
+  }
+
+  const handleToggleComplete = async (id, currentStatus) => {
+    try {
+      await calendarService.toggleCompletion(id, !currentStatus)
+      await loadActivities()
+    } catch (err) {
+      console.error('Failed to toggle completion:', err)
+    }
+  }
+
+  const handleDeleteActivity = async (id) => {
+    try {
+      await calendarService.deleteActivity(id)
+      await loadActivities()
+    } catch (err) {
+      console.error('Failed to delete activity:', err)
+    }
+  }
+
+  const getDaysInMonth = () => {
+    const year = currentDate.getFullYear()
+    const month = currentDate.getMonth()
+    const firstDay = new Date(year, month, 1).getDay()
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+
+    const days = []
+    // Add empty cells for days before month starts
+    for (let i = 0; i < firstDay; i++) {
+      days.push(null)
+    }
+    // Add days of month
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push(i)
+    }
+    return days
+  }
+
+  const getActivitiesForDay = (day) => {
+    if (!day) return []
+    const dateStr = new Date(currentDate.getFullYear(), currentDate.getMonth(), day)
+      .toISOString().split('T')[0]
+    return activities.filter(a => a.activity_date === dateStr)
+  }
+
+  const isToday = (day) => {
+    const today = new Date()
+    return day &&
+      currentDate.getFullYear() === today.getFullYear() &&
+      currentDate.getMonth() === today.getMonth() &&
+      day === today.getDate()
+  }
+
+  const isSelected = (day) => {
+    return day &&
+      currentDate.getFullYear() === selectedDate.getFullYear() &&
+      currentDate.getMonth() === selectedDate.getMonth() &&
+      day === selectedDate.getDate()
+  }
+
+  const previousMonth = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))
+  }
+
+  const nextMonth = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))
+  }
+
+  const getTypeColor = (type) => {
+    const colors = {
+      task: 'bg-blue-500',
+      class: 'bg-purple-500',
+      study: 'bg-cyan-500',
+      break: 'bg-green-500',
+      event: 'bg-amber-500',
+      meeting: 'bg-red-500',
+      assignment: 'bg-pink-500',
+    }
+    return colors[type] || 'bg-blue-500'
   }
 
   return (
-    <div className="space-y-6 pb-6">
-      {/* Header */}
-      <div className="bg-dark-bg-secondary rounded-2xl p-6 shadow-dark-soft-md border border-dark-border-glow">
-        <div className="flex items-start justify-between mb-4">
+    <div className="space-y-5 pb-6 animate-fadeIn">
+      {/* AI Activity Input */}
+      <div className="bg-gradient-to-br from-primary-500/10 via-dark-bg-secondary to-accent-purple/10 rounded-2xl p-5 border border-dark-border-glow shadow-dark-soft-lg">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-cyan flex items-center justify-center shadow-glow-cyan">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </div>
           <div>
-            <h2 className="text-xl font-bold text-dark-text-primary mb-1">Today's Plan</h2>
-            <p className="text-sm text-dark-text-secondary">AI-optimized for your peak performance</p>
-          </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary-500/10 border border-primary-500/30 shadow-glow-cyan">
-            <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-primary-500 to-accent-purple animate-pulse shadow-glow-cyan"></div>
-            <span className="text-xs font-medium text-primary-500">
-              AI Active
-            </span>
+            <h3 className="text-dark-text-primary font-bold">AI Activity Creator</h3>
+            <p className="text-xs text-dark-text-muted">Describe your activity naturally</p>
           </div>
         </div>
 
-        {/* Progress Bar */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-dark-text-secondary">Today's Progress</span>
-            <span className="text-xs font-bold text-primary-500">40%</span>
+        {/* Success/Error Messages */}
+        {success && (
+          <div className="mb-3 p-3 rounded-xl bg-green-500/10 border border-green-500/30 animate-fadeIn">
+            <p className="text-green-400 text-sm">{success}</p>
           </div>
-          <div className="w-full h-3 bg-dark-bg-primary rounded-full overflow-hidden shadow-dark-inner">
-            <div className="h-full w-[40%] bg-gradient-to-r from-primary-500 to-accent-cyan rounded-full shadow-glow-cyan transition-all"></div>
+        )}
+        {error && (
+          <div className="mb-3 p-3 rounded-xl bg-red-500/10 border border-red-500/30 animate-fadeIn">
+            <p className="text-red-400 text-sm">{error}</p>
           </div>
-        </div>
-      </div>
+        )}
 
-      {/* Study Plan Timeline */}
-      <div className="space-y-3">
-        {studyPlan.map((item, index) => (
-          <div
-            key={item.id}
-            className={`relative ${item.current ? 'scale-105' : ''} transition-all`}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={aiInput}
+            onChange={(e) => setAiInput(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleAiCreate()}
+            placeholder="e.g., Study chemistry tomorrow at 3pm for 2 hours"
+            className="flex-1 px-4 py-3 rounded-xl bg-dark-bg-tertiary border border-dark-border-glow text-dark-text-primary placeholder:text-dark-text-muted focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
+            disabled={aiProcessing}
+          />
+          <button
+            onClick={handleAiCreate}
+            disabled={aiProcessing || !aiInput.trim()}
+            className="px-6 py-3 bg-gradient-to-r from-primary-500 to-accent-cyan text-white font-semibold rounded-xl hover:shadow-glow-cyan transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
           >
-            {/* Connecting Line */}
-            {index < studyPlan.length - 1 && (
-              <div className={`absolute left-[29px] top-16 w-0.5 h-6 ${
-                item.completed ? 'bg-gradient-to-b from-primary-500 to-accent-cyan' : 'bg-dark-border-subtle'
-              }`}></div>
+            {aiProcessing ? (
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+            ) : (
+              'Create'
             )}
-
-            <div className={`relative bg-dark-bg-secondary rounded-2xl p-4 shadow-dark-soft-md border transition-all ${
-              item.current
-                ? 'border-primary-500 shadow-glow-cyan'
-                : item.completed
-                ? 'border-dark-border-glow opacity-60'
-                : 'border-dark-border-glow'
-            }`}>
-              <div className="flex gap-4">
-                {/* Time & Status Indicator */}
-                <div className="flex flex-col items-center gap-2">
-                  <div className={`relative w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-md ${
-                    item.completed
-                      ? 'bg-gradient-to-br from-green-600 to-emerald-700 shadow-dark-soft'
-                      : item.current
-                      ? `bg-gradient-to-br ${getTypeColor(item.type)} shadow-glow-cyan`
-                      : 'bg-gradient-to-br from-dark-bg-tertiary to-dark-navy-dark'
-                  }`}>
-                    {item.completed ? (
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    ) : (
-                      getTypeIcon(item.type)
-                    )}
-
-                    {item.current && (
-                      <div className="absolute -inset-1 rounded-xl bg-gradient-to-r from-primary-500 to-accent-cyan opacity-40 blur animate-pulse"></div>
-                    )}
-                  </div>
-                  <span className="text-xs font-bold text-dark-text-primary">{item.time}</span>
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      <h4 className={`font-semibold mb-1 ${
-                        item.completed ? 'text-dark-text-muted line-through' : 'text-dark-text-primary'
-                      }`}>
-                        {item.title}
-                      </h4>
-                      <div className="flex items-center gap-3 text-xs">
-                        {item.subject && (
-                          <span className="text-dark-text-secondary font-medium">{item.subject}</span>
-                        )}
-                        <span className="text-dark-text-muted">{item.duration}</span>
-                      </div>
-                    </div>
-
-                    {item.aiSuggested && (
-                      <div className="flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg bg-primary-500/10 border border-primary-500/30">
-                        <svg className="w-3.5 h-3.5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                        <span className="text-xs font-medium text-primary-500">AI</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Action Buttons */}
-                  {item.current && (
-                    <div className="flex gap-2 mt-3">
-                      <button className="flex-1 py-2 px-4 bg-gradient-to-r from-primary-500 to-accent-cyan text-white text-sm font-semibold rounded-xl hover:shadow-glow-cyan transition-all active:scale-95">
-                        Start Now
-                      </button>
-                      <button className="px-4 py-2 bg-dark-bg-tertiary text-dark-text-secondary text-sm font-medium rounded-xl hover:bg-dark-navy-dark border border-dark-border-glow transition-all active:scale-95">
-                        Skip
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
+          </button>
+        </div>
+        <p className="text-xs text-dark-text-muted mt-2">
+          Try: "Math class Monday 9am", "Study session tomorrow afternoon", "Team meeting Friday at 2pm"
+        </p>
       </div>
 
-      {/* Smart Insights */}
-      <div className="bg-gradient-to-br from-accent-purple/10 via-dark-bg-tertiary to-primary-500/10 rounded-2xl p-5 border border-dark-border-glow shadow-dark-soft-md">
-        <div className="flex gap-3">
-          <div className="flex-shrink-0">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-purple to-accent-purple-dark flex items-center justify-center shadow-glow-purple">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+      {/* Calendar Header */}
+      <div className="bg-dark-bg-secondary rounded-2xl p-5 border border-dark-border-glow shadow-dark-soft-md">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-xl font-bold text-dark-text-primary">
+            {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+          </h2>
+          <div className="flex gap-2">
+            <button
+              onClick={previousMonth}
+              className="w-9 h-9 rounded-lg bg-dark-bg-tertiary border border-dark-border-glow text-dark-text-primary hover:border-primary-500 transition-all active:scale-95"
+            >
+              <svg className="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <button
+              onClick={nextMonth}
+              className="w-9 h-9 rounded-lg bg-dark-bg-tertiary border border-dark-border-glow text-dark-text-primary hover:border-primary-500 transition-all active:scale-95"
+            >
+              <svg className="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Day Names */}
+        <div className="grid grid-cols-7 gap-1 mb-2">
+          {dayNames.map(day => (
+            <div key={day} className="text-center text-xs font-semibold text-dark-text-muted py-2">
+              {day}
+            </div>
+          ))}
+        </div>
+
+        {/* Calendar Days */}
+        <div className="grid grid-cols-7 gap-1">
+          {getDaysInMonth().map((day, index) => {
+            const dayActivities = getActivitiesForDay(day)
+            const hasActivities = dayActivities.length > 0
+
+            return (
+              <button
+                key={index}
+                onClick={() => day && setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day))}
+                disabled={!day}
+                className={`aspect-square rounded-lg p-1 transition-all ${
+                  !day
+                    ? 'invisible'
+                    : isSelected(day)
+                    ? 'bg-gradient-to-br from-primary-500 to-accent-cyan text-white shadow-glow-cyan'
+                    : isToday(day)
+                    ? 'bg-primary-500/20 border-2 border-primary-500 text-dark-text-primary font-bold'
+                    : 'bg-dark-bg-tertiary text-dark-text-primary hover:bg-dark-navy-dark hover:border-primary-500/50 border border-dark-border-subtle'
+                } active:scale-95`}
+              >
+                {day && (
+                  <div className="flex flex-col items-center justify-center h-full">
+                    <span className={`text-sm font-semibold ${isSelected(day) ? 'text-white' : ''}`}>
+                      {day}
+                    </span>
+                    {hasActivities && (
+                      <div className="flex gap-0.5 mt-1">
+                        {dayActivities.slice(0, 3).map((_, i) => (
+                          <div
+                            key={i}
+                            className={`w-1 h-1 rounded-full ${isSelected(day) ? 'bg-white' : 'bg-primary-500'}`}
+                          ></div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Selected Day Activities */}
+      <div className="bg-dark-bg-secondary rounded-2xl p-5 border border-dark-border-glow shadow-dark-soft-md">
+        <h3 className="text-lg font-bold text-dark-text-primary mb-4">
+          {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+        </h3>
+
+        {dayActivities.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-dark-bg-tertiary flex items-center justify-center">
+              <svg className="w-8 h-8 text-dark-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
+            <p className="text-dark-text-muted text-sm">No activities for this day</p>
+            <p className="text-dark-text-muted text-xs mt-1">Use AI to create one!</p>
           </div>
-          <div className="flex-1">
-            <h4 className="font-semibold text-dark-text-primary mb-1">AI Insight</h4>
-            <p className="text-sm text-dark-text-secondary leading-relaxed">
-              Based on your focus patterns, you're most productive between 4-6 PM. I've scheduled your hardest tasks during this window.
-            </p>
-          </div>
-        </div>
-      </div>
+        ) : (
+          <div className="space-y-3">
+            {dayActivities.map((activity) => (
+              <div
+                key={activity.id}
+                className={`p-4 rounded-xl border transition-all ${
+                  activity.is_completed
+                    ? 'bg-dark-bg-tertiary border-dark-border-subtle opacity-60'
+                    : 'bg-dark-bg-tertiary border-dark-border-glow hover:border-primary-500/50'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <button
+                    onClick={() => handleToggleComplete(activity.id, activity.is_completed)}
+                    className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+                      activity.is_completed
+                        ? 'bg-green-500 border-green-500'
+                        : 'border-dark-border-glow hover:border-primary-500'
+                    }`}
+                  >
+                    {activity.is_completed && (
+                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </button>
 
-      {/* Adjust Plan Button */}
-      <button className="w-full py-3 px-4 bg-dark-bg-secondary border-2 border-dark-border-glow text-dark-text-primary font-semibold rounded-xl hover:border-primary-500 hover:text-primary-500 transition-all active:scale-95 shadow-dark-soft">
-        Adjust Plan
-      </button>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <h4 className={`font-semibold ${
+                        activity.is_completed
+                          ? 'text-dark-text-muted line-through'
+                          : 'text-dark-text-primary'
+                      }`}>
+                        {activity.title}
+                      </h4>
+                      {activity.ai_generated && (
+                        <div className="flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-lg bg-primary-500/10 border border-primary-500/30">
+                          <svg className="w-3 h-3 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-3 text-xs text-dark-text-muted">
+                      {activity.start_time && (
+                        <span>{activity.start_time.slice(0, 5)}</span>
+                      )}
+                      {activity.subject && (
+                        <span className="text-dark-text-secondary font-medium">{activity.subject}</span>
+                      )}
+                      {activity.duration_minutes && (
+                        <span>{activity.duration_minutes} min</span>
+                      )}
+                      <span className={`px-2 py-0.5 rounded ${getTypeColor(activity.activity_type)} text-white text-xs font-medium`}>
+                        {activity.activity_type}
+                      </span>
+                    </div>
+
+                    {activity.description && (
+                      <p className="text-sm text-dark-text-secondary mt-2">{activity.description}</p>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => handleDeleteActivity(activity.id)}
+                    className="flex-shrink-0 w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition-all active:scale-95"
+                  >
+                    <svg className="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
