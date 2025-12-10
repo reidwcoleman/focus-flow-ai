@@ -1,45 +1,25 @@
 import { useState, useEffect } from 'react'
 import canvasService from '../services/canvasService'
 import authService from '../services/authService'
+import assignmentsService from '../services/assignmentsService'
 
 const Dashboard = ({ onOpenScanner }) => {
   const [userName, setUserName] = useState('there')
-  const [assignments, setAssignments] = useState([
-    {
-      id: 1,
-      title: 'Chemistry Lab Report',
-      subject: 'Chemistry',
-      dueDate: '2025-12-12',
-      priority: 'high',
-      progress: 30,
-      aiCaptured: true,
-      timeEstimate: '2h 30m',
-    },
-    {
-      id: 2,
-      title: 'Chapter 7-9 Reading',
-      subject: 'English',
-      dueDate: '2025-12-11',
-      priority: 'medium',
-      progress: 60,
-      aiCaptured: false,
-      timeEstimate: '45m',
-    },
-    {
-      id: 3,
-      title: 'Calculus Problem Set',
-      subject: 'Math',
-      dueDate: '2025-12-10',
-      priority: 'high',
-      progress: 0,
-      aiCaptured: true,
-      timeEstimate: '1h 15m',
-    },
-  ])
+  const [assignments, setAssignments] = useState([])
   const [isLoadingCanvas, setIsLoadingCanvas] = useState(false)
+  const [isLoadingAssignments, setIsLoadingAssignments] = useState(true)
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [newAssignment, setNewAssignment] = useState({
+    title: '',
+    subject: '',
+    dueDate: '',
+    priority: 'medium',
+    timeEstimate: '',
+  })
 
   useEffect(() => {
     loadUserName()
+    loadAssignments()
     loadCanvasAssignments()
   }, [])
 
@@ -51,6 +31,58 @@ const Dashboard = ({ onOpenScanner }) => {
     // Use full_name if available, otherwise use email username
     const name = profile?.full_name || user?.email?.split('@')[0] || 'there'
     setUserName(name)
+  }
+
+  const loadAssignments = async () => {
+    setIsLoadingAssignments(true)
+    try {
+      const { data, error } = await assignmentsService.getUpcomingAssignments()
+      if (error) throw error
+
+      // Convert to app format
+      const formatted = assignmentsService.toAppFormatBatch(data)
+      setAssignments(formatted)
+    } catch (error) {
+      console.error('Failed to load assignments:', error)
+    } finally {
+      setIsLoadingAssignments(false)
+    }
+  }
+
+  const handleCreateAssignment = async () => {
+    if (!newAssignment.title.trim()) {
+      alert('Please enter a title')
+      return
+    }
+
+    try {
+      const { data, error } = await assignmentsService.createAssignment({
+        title: newAssignment.title,
+        subject: newAssignment.subject,
+        dueDate: newAssignment.dueDate || null,
+        priority: newAssignment.priority,
+        timeEstimate: newAssignment.timeEstimate || null,
+        source: 'manual',
+      })
+
+      if (error) throw error
+
+      // Reload assignments
+      await loadAssignments()
+
+      // Reset form and close modal
+      setNewAssignment({
+        title: '',
+        subject: '',
+        dueDate: '',
+        priority: 'medium',
+        timeEstimate: '',
+      })
+      setShowAddModal(false)
+    } catch (error) {
+      console.error('Failed to create assignment:', error)
+      alert('Failed to create assignment')
+    }
   }
 
   const getTimeOfDayGreeting = () => {
@@ -160,7 +192,12 @@ const Dashboard = ({ onOpenScanner }) => {
             <span className="text-dark-text-primary text-sm font-medium tracking-tight">AI Active</span>
           </div>
           <h2 className="text-2xl font-bold text-dark-text-primary mb-1.5 tracking-tight">{getTimeOfDayGreeting()}, {userName}</h2>
-          <p className="text-dark-text-secondary text-sm">You have 3 assignments due this week</p>
+          <p className="text-dark-text-secondary text-sm">
+            {assignments.length === 0
+              ? 'No assignments - add one to get started!'
+              : `You have ${assignments.length} assignment${assignments.length === 1 ? '' : 's'}`
+            }
+          </p>
         </div>
 
         {/* Decorative gradient orbs */}
@@ -187,16 +224,18 @@ const Dashboard = ({ onOpenScanner }) => {
           </div>
         </button>
 
-        <button className="relative overflow-hidden bg-dark-bg-secondary rounded-2xl p-4 shadow-dark-soft-md border border-dark-border-glow hover:shadow-glow-purple hover:border-accent-purple/30 transition-all duration-200 active:scale-[0.98]">
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="relative overflow-hidden bg-dark-bg-secondary rounded-2xl p-4 shadow-dark-soft-md border border-dark-border-glow hover:shadow-glow-green hover:border-green-500/30 transition-all duration-200 active:scale-[0.98]">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-accent-purple to-accent-purple-dark flex items-center justify-center shadow-glow-purple">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-green-600 to-emerald-700 flex items-center justify-center shadow-glow-green">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
             </div>
             <div className="text-left">
-              <div className="font-semibold text-dark-text-primary text-sm tracking-tight">AI Tutor</div>
-              <div className="text-xs text-dark-text-muted">Ask anything</div>
+              <div className="font-semibold text-dark-text-primary text-sm tracking-tight">Add</div>
+              <div className="text-xs text-dark-text-muted">Assignment</div>
             </div>
           </div>
         </button>
@@ -307,6 +346,103 @@ const Dashboard = ({ onOpenScanner }) => {
         {/* Decorative elements */}
         <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-primary-500/20 rounded-full blur-3xl pointer-events-none"></div>
       </div>
+
+      {/* Add Assignment Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-dark-bg-secondary rounded-3xl p-6 max-w-md w-full shadow-2xl border border-dark-border-glow animate-scaleIn">
+            <h3 className="text-xl font-bold text-dark-text-primary mb-4">Add Assignment</h3>
+
+            <div className="space-y-4">
+              {/* Title */}
+              <div>
+                <label className="block text-sm font-medium text-dark-text-secondary mb-1.5">Title *</label>
+                <input
+                  type="text"
+                  value={newAssignment.title}
+                  onChange={(e) => setNewAssignment({ ...newAssignment, title: e.target.value })}
+                  placeholder="e.g., Math Homework Ch. 5"
+                  className="w-full px-4 py-2.5 bg-dark-bg-tertiary border border-dark-border-subtle rounded-xl text-dark-text-primary placeholder-dark-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Subject */}
+              <div>
+                <label className="block text-sm font-medium text-dark-text-secondary mb-1.5">Subject</label>
+                <input
+                  type="text"
+                  value={newAssignment.subject}
+                  onChange={(e) => setNewAssignment({ ...newAssignment, subject: e.target.value })}
+                  placeholder="e.g., Math, Chemistry"
+                  className="w-full px-4 py-2.5 bg-dark-bg-tertiary border border-dark-border-subtle rounded-xl text-dark-text-primary placeholder-dark-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Due Date */}
+              <div>
+                <label className="block text-sm font-medium text-dark-text-secondary mb-1.5">Due Date</label>
+                <input
+                  type="date"
+                  value={newAssignment.dueDate}
+                  onChange={(e) => setNewAssignment({ ...newAssignment, dueDate: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-dark-bg-tertiary border border-dark-border-subtle rounded-xl text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Priority */}
+              <div>
+                <label className="block text-sm font-medium text-dark-text-secondary mb-1.5">Priority</label>
+                <select
+                  value={newAssignment.priority}
+                  onChange={(e) => setNewAssignment({ ...newAssignment, priority: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-dark-bg-tertiary border border-dark-border-subtle rounded-xl text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+
+              {/* Time Estimate */}
+              <div>
+                <label className="block text-sm font-medium text-dark-text-secondary mb-1.5">Time Estimate</label>
+                <input
+                  type="text"
+                  value={newAssignment.timeEstimate}
+                  onChange={(e) => setNewAssignment({ ...newAssignment, timeEstimate: e.target.value })}
+                  placeholder="e.g., 1h 30m"
+                  className="w-full px-4 py-2.5 bg-dark-bg-tertiary border border-dark-border-subtle rounded-xl text-dark-text-primary placeholder-dark-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowAddModal(false)
+                  setNewAssignment({
+                    title: '',
+                    subject: '',
+                    dueDate: '',
+                    priority: 'medium',
+                    timeEstimate: '',
+                  })
+                }}
+                className="flex-1 py-2.5 px-4 bg-dark-bg-tertiary text-dark-text-primary font-semibold rounded-xl hover:bg-dark-bg-surface transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateAssignment}
+                className="flex-1 py-2.5 px-4 bg-gradient-to-r from-primary-500 to-accent-cyan text-white font-semibold rounded-xl hover:shadow-glow-cyan transition-all active:scale-95"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

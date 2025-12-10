@@ -18,6 +18,7 @@ function App() {
   const [scannedAssignments, setScannedAssignments] = useState([])
   const [user, setUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
+  const [dashboardKey, setDashboardKey] = useState(0)
 
   // Check auth state on mount
   useEffect(() => {
@@ -138,14 +139,17 @@ function App() {
         {/* Scanner Modal */}
         {showScanner && (
           <Scanner
-            onClose={() => setShowScanner(false)}
+            onClose={() => {
+              setShowScanner(false)
+              setDashboardKey(prev => prev + 1) // Refresh dashboard when scanner closes
+            }}
             onCapture={handleCaptureAssignment}
           />
         )}
 
         {/* Main Content */}
         <div className="max-w-md mx-auto w-full px-5 pt-6 pb-24 overflow-y-auto">
-          {activeTab === 'dashboard' && <Dashboard onOpenScanner={() => setShowScanner(true)} />}
+          {activeTab === 'dashboard' && <Dashboard key={dashboardKey} onOpenScanner={() => setShowScanner(true)} />}
           {activeTab === 'planner' && <Planner />}
           {activeTab === 'tutor' && <AITutor />}
           {activeTab === 'analytics' && <Analytics />}

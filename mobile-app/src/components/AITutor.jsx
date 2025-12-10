@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import aiService from '../services/aiService'
+import authService from '../services/authService'
 
 const AITutor = () => {
   const [messages, setMessages] = useState([
@@ -225,15 +226,20 @@ const AITutor = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
             <span className="text-sm font-medium text-dark-text-primary">
-              {aiService.getLimits().free - usageCount} / {aiService.getLimits().free} free chats left
+              {authService.isPro()
+                ? `${usageCount}/250 AI chats`
+                : `${aiService.getLimits().free - usageCount} free chats left`
+              }
             </span>
           </div>
-          <button
-            onClick={() => setShowUpgradeModal(true)}
-            className="text-xs font-semibold text-accent-purple hover:text-accent-purple-light transition-colors"
-          >
-            Upgrade
-          </button>
+          {!authService.isPro() && (
+            <button
+              onClick={() => setShowUpgradeModal(true)}
+              className="text-xs font-semibold text-accent-purple hover:text-accent-purple-light transition-colors"
+            >
+              Upgrade
+            </button>
+          )}
         </div>
       </div>
 
