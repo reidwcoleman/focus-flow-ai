@@ -151,6 +151,8 @@ const Scanner = ({ onClose, onCapture, initialScanMode = 'homework' }) => {
 
       if (error) throw error
 
+      console.log(`✅ Successfully saved assignment "${assignmentData.title}"`)
+
       // Also call onCapture if provided (for backwards compatibility)
       if (onCapture) {
         onCapture(assignmentData)
@@ -158,7 +160,7 @@ const Scanner = ({ onClose, onCapture, initialScanMode = 'homework' }) => {
 
       onClose()
     } catch (err) {
-      console.error('Failed to save assignment:', err)
+      console.error('❌ Failed to save assignment:', err)
       setError('Failed to save assignment. Please try again.')
     } finally {
       setIsSaving(false)
@@ -471,13 +473,22 @@ const Scanner = ({ onClose, onCapture, initialScanMode = 'homework' }) => {
                   <div className="space-y-3">
                     <button
                       onClick={saveAssignment}
-                      className="w-full py-4 px-6 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold rounded-xl shadow-glow-lg hover:shadow-glow transition-all active:scale-95"
+                      disabled={isSaving}
+                      className="w-full py-4 px-6 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold rounded-xl shadow-glow-lg hover:shadow-glow transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Add to My Assignments
+                      {isSaving ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          <span>Saving assignment...</span>
+                        </div>
+                      ) : (
+                        'Add to My Assignments'
+                      )}
                     </button>
                     <button
                       onClick={retake}
-                      className="w-full py-3 px-6 bg-white/10 backdrop-blur-sm text-white font-medium rounded-xl border border-white/20 hover:bg-white/20 transition-all active:scale-95"
+                      disabled={isSaving}
+                      className="w-full py-3 px-6 bg-white/10 backdrop-blur-sm text-white font-medium rounded-xl border border-white/20 hover:bg-white/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Retake Photo
                     </button>
