@@ -64,13 +64,16 @@ CREATE TABLE IF NOT EXISTS calendar_activities (
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT,
-  date DATE NOT NULL,
+  activity_date DATE NOT NULL,
   start_time TIME,
   end_time TIME,
-  duration INTEGER,
+  duration_minutes INTEGER,
   subject TEXT,
-  activity_type TEXT CHECK (activity_type IN ('task', 'class', 'study', 'break', 'event', 'other')),
-  completed BOOLEAN DEFAULT FALSE,
+  activity_type TEXT DEFAULT 'task',
+  location TEXT,
+  color TEXT DEFAULT '#3B82F6',
+  is_all_day BOOLEAN DEFAULT FALSE,
+  is_completed BOOLEAN DEFAULT FALSE,
   ai_generated BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -78,7 +81,8 @@ CREATE TABLE IF NOT EXISTS calendar_activities (
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_calendar_activities_user_id ON calendar_activities(user_id);
-CREATE INDEX IF NOT EXISTS idx_calendar_activities_date ON calendar_activities(date);
+CREATE INDEX IF NOT EXISTS idx_calendar_activities_date ON calendar_activities(activity_date);
+CREATE INDEX IF NOT EXISTS idx_calendar_activities_user_date ON calendar_activities(user_id, activity_date);
 
 -- Enable RLS
 ALTER TABLE calendar_activities ENABLE ROW LEVEL SECURITY;
