@@ -68,7 +68,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-primary-50/30 to-accent-purple/10">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-primary-50/30">
       {/* Scanner Modal */}
       {showScanner && (
         <Scanner
@@ -78,7 +78,7 @@ function App() {
       )}
 
       {/* Main Content */}
-      <div className="max-w-md mx-auto w-full px-4 pt-6 pb-24 overflow-y-auto">
+      <div className="max-w-md mx-auto w-full px-5 pt-6 pb-24 overflow-y-auto">
         {activeTab === 'dashboard' && <Dashboard onOpenScanner={() => setShowScanner(true)} />}
         {activeTab === 'planner' && <Planner />}
         {activeTab === 'tutor' && <AITutor />}
@@ -87,34 +87,34 @@ function App() {
       </div>
 
       {/* Bottom Navigation - Premium iOS Style */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-neutral-200/50 safe-area-inset-bottom">
-        <div className="max-w-md mx-auto flex justify-around px-2">
+      <nav className="fixed bottom-0 left-0 right-0 glass-effect border-t border-neutral-200/60 safe-area-inset-bottom shadow-soft-lg">
+        <div className="max-w-md mx-auto flex justify-around items-center px-1">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`relative flex-1 py-3 flex flex-col items-center gap-1.5 transition-all ${
-                  isActive ? 'scale-105' : 'scale-100'
+                className={`relative flex-1 py-2.5 flex flex-col items-center gap-1 transition-all duration-200 ${
+                  isActive ? 'scale-105' : 'scale-100 active:scale-95'
                 }`}
               >
                 {/* Active Indicator */}
                 {isActive && (
-                  <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-primary-500 to-accent-purple rounded-full"></div>
+                  <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-primary-500 to-primary-400 rounded-full shadow-glow-primary"></div>
                 )}
 
-                {/* Icon */}
-                <div className={`transition-colors ${
+                {/* Icon Container */}
+                <div className={`transition-all duration-200 ${
                   isActive
                     ? 'text-primary-600'
-                    : 'text-neutral-400'
+                    : 'text-neutral-500 active:text-neutral-600'
                 }`}>
                   {getIcon(tab.icon, isActive)}
                 </div>
 
                 {/* Label */}
-                <span className={`text-xs font-semibold transition-all ${
+                <span className={`text-[11px] font-semibold tracking-tight transition-all duration-200 ${
                   isActive
                     ? 'text-primary-600'
                     : 'text-neutral-500'
@@ -122,9 +122,9 @@ function App() {
                   {tab.label}
                 </span>
 
-                {/* Glow Effect */}
+                {/* Glow Effect for AI Tab */}
                 {isActive && tab.id === 'tutor' && (
-                  <div className="absolute inset-0 bg-gradient-to-t from-accent-purple/10 to-transparent rounded-2xl blur-lg"></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-accent-purple/5 to-transparent rounded-2xl pointer-events-none"></div>
                 )}
               </button>
             )

@@ -1,17 +1,19 @@
 /**
  * AI Service for Focus Flow
- * Uses Groq - Lightning fast, completely FREE AI
+ * Uses Supabase Edge Function to securely proxy AI requests
  */
 
 const AI_CONFIG = {
-  // Groq API Key (100% FREE!)
-  apiKey: import.meta.env.VITE_GROQ_API_KEY || '',
+  // Supabase Edge Function URL
+  // Replace with your actual Supabase project URL
+  supabaseUrl: import.meta.env.VITE_SUPABASE_URL || 'YOUR_SUPABASE_URL',
+  edgeFunctionUrl: import.meta.env.VITE_SUPABASE_URL
+    ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`
+    : null,
 
-  // Model: Llama 3.1 70B - Fast and high quality
-  model: 'llama-3.1-70b-versatile',
-
-  // Endpoint
-  apiUrl: 'https://api.groq.com/openai/v1/chat/completions',
+  // Fallback: Direct Groq API (for local development)
+  useDirectApi: import.meta.env.VITE_USE_DIRECT_API === 'true',
+  groqApiKey: import.meta.env.VITE_GROQ_API_KEY || '',
 }
 
 class AIService {
@@ -41,24 +43,38 @@ You're helping middle school, high school, and early college students succeed ac
    * Check if AI service is properly configured
    */
   isConfigured() {
-    return Boolean(AI_CONFIG.apiKey)
+    // Check if using backend (recommended)
+    if (AI_CONFIG.edgeFunctionUrl) {
+      return true
+    }
+
+    // Check if using direct API (local dev only)
+    if (AI_CONFIG.useDirectApi && AI_CONFIG.groqApiKey) {
+      return true
+    }
+
+    return false
   }
 
   /**
    * Get the current provider name for display
    */
   getProviderName() {
-    return this.isConfigured() ? 'Groq Llama 3.1' : 'Demo Mode'
+    if (AI_CONFIG.edgeFunctionUrl) {
+      return 'Groq Llama 3.1 (Secure)'
+    }
+    if (AI_CONFIG.useDirectApi && AI_CONFIG.groqApiKey) {
+      return 'Groq Llama 3.1 (Direct)'
+    }
+    return 'Demo Mode'
   }
 
   /**
-   * Send a message and get AI response from Groq
-   * @param {string} userMessage - The user's question/message
-   * @returns {Promise<string>} - AI response
+   * Send message via Supabase Edge Function (RECOMMENDED)
    */
-  async sendMessage(userMessage) {
-    if (!this.isConfigured()) {
-      throw new Error('Groq API key not configured. Please add VITE_GROQ_API_KEY to your .env file.')
+  async sendViaBackend(userMessage) {
+    if (!AI_CONFIG.edgeFunctionUrl) {
+      throw new Error('Supabase URL not configured. Add VITE_SUPABASE_URL to .env')
     }
 
     // Add user message to history
@@ -68,20 +84,69 @@ You're helping middle school, high school, and early college students succeed ac
     })
 
     try {
-      // Build messages for Groq (OpenAI-compatible API)
-      const messages = [
-        { role: 'system', content: this.systemPrompt },
-        ...this.conversationHistory.slice(-10), // Keep last 10 messages
-      ]
-
-      const response = await fetch(AI_CONFIG.apiUrl, {
+      const response = await fetch(AI_CONFIG.edgeFunctionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${AI_CONFIG.apiKey}`,
+          // Optional: Add auth token if you enable authentication
+          // 'Authorization': `Bearer ${supabaseAuthToken}`,
         },
         body: JSON.stringify({
-          model: AI_CONFIG.model,
+          messages: this.conversationHistory.slice(-10), // Last 10 messages
+          systemPrompt: this.systemPrompt,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.details || errorData.error || 'Failed to get AI response')
+      }
+
+      const data = await response.json()
+      const aiMessage = data.message || 'Sorry, I could not generate a response.'
+
+      // Add AI response to history
+      this.conversationHistory.push({
+        role: 'assistant',
+        content: aiMessage,
+      })
+
+      return aiMessage
+    } catch (error) {
+      // Remove user message from history on error
+      this.conversationHistory.pop()
+      throw error
+    }
+  }
+
+  /**
+   * Send message directly to Groq (LOCAL DEV ONLY - NOT SECURE FOR PRODUCTION)
+   */
+  async sendDirectToGroq(userMessage) {
+    if (!AI_CONFIG.groqApiKey) {
+      throw new Error('Groq API key not configured')
+    }
+
+    // Add user message to history
+    this.conversationHistory.push({
+      role: 'user',
+      content: userMessage,
+    })
+
+    try {
+      const messages = [
+        { role: 'system', content: this.systemPrompt },
+        ...this.conversationHistory.slice(-10),
+      ]
+
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${AI_CONFIG.groqApiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-70b-versatile',
           messages: messages,
           temperature: 0.7,
           max_tokens: 600,
@@ -91,17 +156,12 @@ You're helping middle school, high school, and early college students succeed ac
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-
         if (response.status === 401) {
-          throw new Error('Invalid API key. Please check your Groq API key.')
+          throw new Error('Invalid API key')
         }
         if (response.status === 429) {
-          throw new Error('Rate limit exceeded. Free tier allows 30 requests/min. Please wait a moment.')
+          throw new Error('Rate limit exceeded. Please wait a moment.')
         }
-        if (response.status === 400) {
-          throw new Error('Invalid request. Please try again.')
-        }
-
         throw new Error(errorData.error?.message || 'Failed to get AI response')
       }
 
@@ -116,22 +176,41 @@ You're helping middle school, high school, and early college students succeed ac
 
       return aiMessage
     } catch (error) {
-      // Remove the user message from history on error
+      // Remove user message from history on error
       this.conversationHistory.pop()
       throw error
     }
   }
 
   /**
+   * Send a message and get AI response
+   * Automatically chooses backend or direct API based on configuration
+   */
+  async sendMessage(userMessage) {
+    if (!this.isConfigured()) {
+      throw new Error('AI service not configured. Please set up Supabase or add Groq API key.')
+    }
+
+    // Use backend if configured (recommended)
+    if (AI_CONFIG.edgeFunctionUrl && !AI_CONFIG.useDirectApi) {
+      return await this.sendViaBackend(userMessage)
+    }
+
+    // Fallback to direct API (local dev only)
+    if (AI_CONFIG.useDirectApi && AI_CONFIG.groqApiKey) {
+      return await this.sendDirectToGroq(userMessage)
+    }
+
+    throw new Error('No AI service configured')
+  }
+
+  /**
    * Get a demo response when API is not configured
-   * @param {string} userMessage - The user's question
-   * @returns {Promise<string>} - Demo response
    */
   async getDemoResponse(userMessage) {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000))
 
-    // Generate contextual demo responses
     const lowerMessage = userMessage.toLowerCase()
 
     if (lowerMessage.includes('photosynthesis')) {
@@ -145,9 +224,7 @@ You're helping middle school, high school, and early college students succeed ac
 
 **The Formula**: 6CO₂ + 6H₂O + light energy → C₆H₁₂O₆ + 6O₂
 
-The oxygen released is what we breathe! Would you like to explore any specific part of this process?
-
-*💡 Tip: Get REAL AI tutoring by adding a FREE Groq API key!*`
+The oxygen released is what we breathe! Would you like to explore any specific part of this process?`
     }
 
     if (lowerMessage.includes('math') || lowerMessage.includes('calculus') || lowerMessage.includes('algebra')) {
@@ -159,9 +236,7 @@ The oxygen released is what we breathe! Would you like to explore any specific p
 3. Break it into smaller steps
 4. Check your work at each step
 
-Could you share the specific problem or concept you're working on? That way I can give you targeted help with examples!
-
-*💡 Tip: Get step-by-step solutions with a FREE Groq API key!*`
+Could you share the specific problem or concept you're working on? That way I can give you targeted help with examples!`
     }
 
     if (lowerMessage.includes('study') || lowerMessage.includes('prepare') || lowerMessage.includes('exam') || lowerMessage.includes('test')) {
@@ -179,9 +254,7 @@ Could you share the specific problem or concept you're working on? That way I ca
 3. Focus on understanding "why," not just "what"
 4. Get enough sleep before the exam
 
-What subject are you studying for? I can give more specific tips!
-
-*💡 Tip: Unlock unlimited tutoring with a FREE Groq API key!*`
+What subject are you studying for? I can give more specific tips!`
     }
 
     // Generic helpful response
@@ -192,21 +265,7 @@ What subject are you studying for? I can give more specific tips!
 - What specifically are you trying to understand?
 - Have you learned any related concepts yet?
 
-This will help me tailor my explanation to exactly what you need. In the meantime, remember that learning is a process - it's totally normal to not understand something right away!
-
-**🚀 Want LIGHTNING-FAST AI tutoring?**
-Get a FREE Groq API key (takes 30 seconds):
-1. Visit https://console.groq.com/keys
-2. Sign up (no credit card needed!)
-3. Create an API key
-4. Add to .env file: VITE_GROQ_API_KEY=your-key
-5. Restart app - get blazing fast AI responses!
-
-**Why Groq?**
-- ✅ 100% FREE (no credit card)
-- ✅ LIGHTNING FAST (100+ tokens/second!)
-- ✅ Powered by Llama 3.1 70B
-- ✅ 30 requests/min free tier`
+This will help me tailor my explanation to exactly what you need. In the meantime, remember that learning is a process - it's totally normal to not understand something right away!`
   }
 
   /**
