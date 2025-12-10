@@ -186,25 +186,27 @@ const Scanner = ({ onClose, onCapture, initialScanMode = 'homework' }) => {
   }, [mode])
 
   return (
-    <div className="fixed inset-0 z-50 bg-neutral-900">
-      {/* Header */}
-      <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-neutral-900 to-transparent p-4">
-        <div className="flex items-center justify-between mb-3">
-          <button
-            onClick={onClose}
-            className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/20 transition-all"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-          <h2 className="text-white font-semibold">
-            {scanMode === 'homework' && 'Scan Homework'}
-            {scanMode === 'notes' && 'Scan Notes'}
-            {scanMode === 'flashcards' && 'Scan Textbook'}
-          </h2>
-          <div className="w-10"></div>
-        </div>
+    <div className="fixed inset-0 z-50 bg-neutral-900 flex items-center justify-center">
+      {/* Mobile-sized container - matches app dimensions */}
+      <div className="w-full h-full max-w-[28rem] mx-auto bg-neutral-900 relative">
+        {/* Header */}
+        <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-neutral-900 to-transparent p-4">
+          <div className="flex items-center justify-between mb-3">
+            <button
+              onClick={onClose}
+              className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/20 transition-all"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <h2 className="text-white font-semibold">
+              {scanMode === 'homework' && 'Scan Homework'}
+              {scanMode === 'notes' && 'Scan Notes'}
+              {scanMode === 'flashcards' && 'Scan Textbook'}
+            </h2>
+            <div className="w-10"></div>
+          </div>
 
         {/* Mode Selector */}
         {mode === 'camera' && (
@@ -566,6 +568,7 @@ const Scanner = ({ onClose, onCapture, initialScanMode = 'homework' }) => {
           )}
         </div>
       )}
+      </div>
     </div>
   )
 }

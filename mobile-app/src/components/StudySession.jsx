@@ -12,10 +12,8 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
 
   const [currentIndex, setCurrentIndex] = useState(0)
   const [sessionStats, setSessionStats] = useState({
-    again: 0,
-    hard: 0,
-    good: 0,
-    easy: 0
+    needsWork: 0,
+    mastered: 0
   })
   const [showComplete, setShowComplete] = useState(false)
   const [dragOffset, setDragOffset] = useState(0)
@@ -43,15 +41,15 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
     setIsDragging(false)
 
     // Swipe threshold
-    const threshold = 80
+    const threshold = 100
 
     if (Math.abs(dragOffset) > threshold) {
       if (dragOffset > 0) {
-        // Swipe right - Easy
+        // Swipe right - Mastered (rating 5)
         handleRating(5)
       } else {
-        // Swipe left - Again
-        handleRating(1)
+        // Swipe left - Needs Work (rating 2)
+        handleRating(2)
       }
     }
 
@@ -62,13 +60,11 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
     // Record the review with SM-2 algorithm
     recordCardReview(currentCard.id, rating)
 
-    // Update stats
+    // Update stats - simplified to two categories
     setSessionStats(prev => ({
       ...prev,
-      again: prev.again + (rating <= 2 ? 1 : 0),
-      hard: prev.hard + (rating === 3 ? 1 : 0),
-      good: prev.good + (rating === 4 ? 1 : 0),
-      easy: prev.easy + (rating === 5 ? 1 : 0)
+      needsWork: prev.needsWork + (rating <= 2 ? 1 : 0),
+      mastered: prev.mastered + (rating >= 5 ? 1 : 0)
     }))
 
     // Move to next card or complete
@@ -95,22 +91,23 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
 
           {/* Stats Grid */}
           <div className="grid grid-cols-2 gap-3 mb-6">
-            <div className="bg-neutral-50 rounded-xl p-4 text-center">
-              <div className="text-2xl font-bold text-neutral-900">{cards.length}</div>
-              <div className="text-xs text-neutral-600">Cards Reviewed</div>
-            </div>
             <div className="bg-green-50 rounded-xl p-4 text-center">
-              <div className="text-2xl font-bold text-green-600">{sessionStats.easy}</div>
-              <div className="text-xs text-green-600">Easy</div>
+              <div className="text-3xl font-bold text-green-600">{sessionStats.mastered}</div>
+              <div className="text-xs text-green-600 font-semibold">Mastered</div>
+              <div className="text-[10px] text-green-500 mt-1">Swiped Right ✓</div>
             </div>
-            <div className="bg-blue-50 rounded-xl p-4 text-center">
-              <div className="text-2xl font-bold text-blue-600">{sessionStats.good}</div>
-              <div className="text-xs text-blue-600">Good</div>
+            <div className="bg-amber-50 rounded-xl p-4 text-center">
+              <div className="text-3xl font-bold text-amber-600">{sessionStats.needsWork}</div>
+              <div className="text-xs text-amber-600 font-semibold">Needs Work</div>
+              <div className="text-[10px] text-amber-500 mt-1">Swiped Left ↻</div>
             </div>
-            <div className="bg-red-50 rounded-xl p-4 text-center">
-              <div className="text-2xl font-bold text-red-600">{sessionStats.again}</div>
-              <div className="text-xs text-red-600">Again</div>
-            </div>
+          </div>
+
+          {/* Total Cards */}
+          <div className="bg-neutral-50 rounded-xl p-3 text-center mb-6">
+            <span className="text-neutral-600 text-sm">
+              <span className="font-bold text-neutral-900">{cards.length}</span> cards reviewed
+            </span>
           </div>
 
           {/* Actions */}
@@ -183,69 +180,53 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
         {/* Swipe Indicators */}
         {isDragging && (
           <>
+            {/* Right Swipe - Mastered */}
             <div
-              className="absolute left-10 top-1/2 -translate-y-1/2 pointer-events-none transition-opacity"
-              style={{ opacity: dragOffset > 50 ? 1 : 0 }}
+              className="absolute left-10 top-1/2 -translate-y-1/2 pointer-events-none transition-all duration-200"
+              style={{
+                opacity: dragOffset > 50 ? 1 : 0,
+                transform: `translateY(-50%) scale(${dragOffset > 100 ? 1.1 : 1})`
+              }}
             >
-              <div className="px-6 py-3 bg-green-500 text-white rounded-2xl font-bold shadow-soft-lg">
-                Easy
+              <div className="px-6 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-2xl font-bold shadow-soft-lg flex items-center gap-2">
+                <span className="text-2xl">✓</span>
+                <span>Mastered</span>
               </div>
             </div>
+
+            {/* Left Swipe - Needs Work */}
             <div
-              className="absolute right-10 top-1/2 -translate-y-1/2 pointer-events-none transition-opacity"
-              style={{ opacity: dragOffset < -50 ? 1 : 0 }}
+              className="absolute right-10 top-1/2 -translate-y-1/2 pointer-events-none transition-all duration-200"
+              style={{
+                opacity: dragOffset < -50 ? 1 : 0,
+                transform: `translateY(-50%) scale(${dragOffset < -100 ? 1.1 : 1})`
+              }}
             >
-              <div className="px-6 py-3 bg-red-500 text-white rounded-2xl font-bold shadow-soft-lg">
-                Again
+              <div className="px-6 py-4 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-2xl font-bold shadow-soft-lg flex items-center gap-2">
+                <span>Needs Work</span>
+                <span className="text-2xl">↻</span>
               </div>
             </div>
           </>
         )}
       </div>
 
-      {/* Rating Buttons */}
-      <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-neutral-200/60 safe-area-inset-bottom shadow-soft-lg">
-        <div className="max-w-md mx-auto px-5 py-6">
-          <div className="grid grid-cols-4 gap-3">
-            {/* Again - Rating 1 */}
-            <button
-              onClick={() => handleRating(1)}
-              className="flex flex-col items-center gap-2 py-3 px-2 rounded-xl bg-red-50 hover:bg-red-100 transition-all active:scale-95"
-            >
-              <span className="text-2xl">❌</span>
-              <span className="text-xs font-semibold text-red-600">Again</span>
-            </button>
-
-            {/* Hard - Rating 3 */}
-            <button
-              onClick={() => handleRating(3)}
-              className="flex flex-col items-center gap-2 py-3 px-2 rounded-xl bg-yellow-50 hover:bg-yellow-100 transition-all active:scale-95"
-            >
-              <span className="text-2xl">😐</span>
-              <span className="text-xs font-semibold text-yellow-600">Hard</span>
-            </button>
-
-            {/* Good - Rating 4 */}
-            <button
-              onClick={() => handleRating(4)}
-              className="flex flex-col items-center gap-2 py-3 px-2 rounded-xl bg-blue-50 hover:bg-blue-100 transition-all active:scale-95"
-            >
-              <span className="text-2xl">👍</span>
-              <span className="text-xs font-semibold text-blue-600">Good</span>
-            </button>
-
-            {/* Easy - Rating 5 */}
-            <button
-              onClick={() => handleRating(5)}
-              className="flex flex-col items-center gap-2 py-3 px-2 rounded-xl bg-green-50 hover:bg-green-100 transition-all active:scale-95"
-            >
-              <span className="text-2xl">✅</span>
-              <span className="text-xs font-semibold text-green-600">Easy</span>
-            </button>
-          </div>
-
-          <div className="mt-4 text-center text-xs text-neutral-500">
-            Swipe right for Easy, left for Again
+      {/* Swipe Instructions */}
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-neutral-900/90 to-transparent safe-area-inset-bottom pointer-events-none">
+        <div className="max-w-md mx-auto px-5 py-8">
+          <div className="flex items-center justify-center gap-8 text-white/80">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
+                <span className="text-lg">←</span>
+              </div>
+              <span className="text-sm font-medium">Needs Work</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Mastered</span>
+              <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+                <span className="text-lg">→</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
