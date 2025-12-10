@@ -21,6 +21,7 @@ const StudyHub = () => {
 
   const [activeSection, setActiveSection] = useState('overview')
   const [studySession, setStudySession] = useState(null)
+  const [selectedNote, setSelectedNote] = useState(null)
 
   const notesStats = getNotesStats()
   const flashcardsStats = getFlashcardsStats()
@@ -184,7 +185,8 @@ const StudyHub = () => {
             {notes.slice(0, 3).map((note) => (
               <div
                 key={note.id}
-                className="flex items-start gap-3 p-3 rounded-xl hover:bg-neutral-50 transition-all cursor-pointer"
+                onClick={() => setSelectedNote(note)}
+                className="flex items-start gap-3 p-3 rounded-xl hover:bg-neutral-50 transition-all cursor-pointer active:scale-[0.98]"
               >
                 <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-accent-purple/10 flex items-center justify-center">
                   <svg className="w-4 h-4 text-accent-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -195,8 +197,10 @@ const StudyHub = () => {
                   <div className="font-semibold text-neutral-900 text-sm truncate">{note.title}</div>
                   <div className="text-neutral-500 text-xs">{note.subject}</div>
                 </div>
-                <div className="text-neutral-400 text-xs">
-                  {new Date(note.updatedAt).toLocaleDateString()}
+                <div className="text-neutral-400 text-xs flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
                 </div>
               </div>
             ))}
@@ -259,6 +263,82 @@ const StudyHub = () => {
           </div>
         )}
       </div>
+
+      {/* Note Viewer Modal */}
+      {selectedNote && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden animate-fadeInUp">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-neutral-200">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-accent-purple/10 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-accent-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-neutral-900">{selectedNote.title}</h3>
+                  <p className="text-sm text-neutral-500">{selectedNote.subject}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedNote(null)}
+                className="w-10 h-10 rounded-full hover:bg-neutral-100 flex items-center justify-center transition-all active:scale-95"
+              >
+                <svg className="w-5 h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto max-h-[calc(85vh-140px)]">
+              {/* Note Content */}
+              <div className="prose prose-sm max-w-none">
+                <div className="whitespace-pre-wrap text-neutral-800 leading-relaxed">
+                  {selectedNote.content}
+                </div>
+              </div>
+
+              {/* Note Metadata */}
+              <div className="mt-6 pt-6 border-t border-neutral-200">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <div className="text-neutral-500 font-medium mb-1">Created</div>
+                    <div className="text-neutral-900">
+                      {new Date(selectedNote.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-neutral-500 font-medium mb-1">Last Updated</div>
+                    <div className="text-neutral-900">
+                      {new Date(selectedNote.updatedAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 border-t border-neutral-200 flex gap-3">
+              <button
+                onClick={() => setSelectedNote(null)}
+                className="flex-1 py-3 px-4 bg-neutral-100 hover:bg-neutral-200 text-neutral-900 font-semibold rounded-xl transition-all active:scale-95"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
