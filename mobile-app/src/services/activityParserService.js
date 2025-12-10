@@ -64,15 +64,25 @@ class ActivityParserService {
       })
 
       if (!response.ok) {
+        const errorText = await response.text()
+        console.error('AI API Error:', errorText)
         throw new Error('Failed to parse activity with AI')
       }
 
       const data = await response.json()
-      const aiResponse = data.response
+      console.log('AI Response:', data)
+
+      const aiResponse = data.response || data.message || data.content
+
+      if (!aiResponse) {
+        console.error('No response from AI:', data)
+        throw new Error('No response from AI')
+      }
 
       // Parse JSON from AI response
       const jsonMatch = aiResponse.match(/\{[\s\S]*\}/)
       if (!jsonMatch) {
+        console.error('AI response did not contain JSON:', aiResponse)
         throw new Error('AI response did not contain valid JSON')
       }
 
