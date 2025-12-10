@@ -154,8 +154,9 @@ function App() {
         </div>
 
       {/* Bottom Navigation - Premium iOS Style with Center Scan Button */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-dark-bg-secondary border-t border-dark-border-glow safe-area-inset-bottom shadow-dark-soft-lg backdrop-blur-xl">
-        <div className="max-w-md mx-auto flex justify-around items-end px-1 relative">
+      <div className="fixed bottom-0 left-0 right-0 flex justify-center">
+        <nav className="max-w-md w-full bg-dark-bg-secondary border-t border-dark-border-glow safe-area-inset-bottom shadow-dark-soft-lg backdrop-blur-xl">
+          <div className="flex justify-around items-end px-1 relative">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id
             const isCenter = tab.isCenter
@@ -225,8 +226,9 @@ function App() {
               </button>
             )
           })}
-        </div>
-      </nav>
+          </div>
+        </nav>
+      </div>
       </div>
     </StudyProvider>
   )
