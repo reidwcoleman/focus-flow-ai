@@ -298,7 +298,7 @@ const Scanner = ({ onClose, onCapture, initialScanMode = 'homework' }) => {
       )}
 
       {/* Processing/Result View */}
-      {mode === 'processing' && (
+      {(mode === 'processing' || mode === 'result') && (
         <div className="w-full h-full flex flex-col p-6">
           {/* Preview Image */}
           <div className="flex-shrink-0 mb-6">
