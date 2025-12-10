@@ -6,6 +6,7 @@
 import { useState } from 'react'
 import { useStudy } from '../contexts/StudyContext'
 import StudySession from './StudySession'
+import notesService from '../services/notesService'
 
 const StudyHub = () => {
   const {
@@ -17,9 +18,7 @@ const StudyHub = () => {
     getCardsByDeck,
     getNotesStats,
     getFlashcardsStats,
-    refreshNotes,
-    updateNote,
-    deleteNote: deleteNoteContext
+    refreshNotes
   } = useStudy()
 
   const [activeSection, setActiveSection] = useState('overview')
@@ -76,13 +75,11 @@ const StudyHub = () => {
     setIsEditingTitle(true)
   }
 
-  const saveTitle = async () => {
+  const saveTitle = () => {
     if (editedTitle.trim() && editedTitle !== selectedNote.title) {
-      const updated = await updateNote(selectedNote.id, { title: editedTitle.trim() })
-      if (updated) {
-        setSelectedNote(updated)
-        await refreshNotes()
-      }
+      notesService.updateNote(selectedNote.id, { title: editedTitle.trim() })
+      refreshNotes()
+      setSelectedNote({ ...selectedNote, title: editedTitle.trim() })
     }
     setIsEditingTitle(false)
   }
@@ -92,13 +89,11 @@ const StudyHub = () => {
     setEditedTitle('')
   }
 
-  const handleDeleteNote = async () => {
-    const success = await deleteNoteContext(selectedNote.id)
-    if (success) {
-      setSelectedNote(null)
-      setShowDeleteConfirm(false)
-      await refreshNotes()
-    }
+  const deleteNote = () => {
+    notesService.deleteNote(selectedNote.id)
+    refreshNotes()
+    setSelectedNote(null)
+    setShowDeleteConfirm(false)
   }
 
   const exportNote = (note) => {
@@ -508,27 +503,27 @@ const StudyHub = () => {
 
             {/* Delete Confirmation Overlay */}
             {showDeleteConfirm && (
-              <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 rounded-3xl animate-fadeIn">
-                <div className="bg-dark-bg-secondary rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-dark-border-glow animate-scaleIn">
-                  <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-red-900/20 flex items-center justify-center border border-red-700/40">
-                    <svg className="w-7 h-7 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 rounded-3xl animate-fadeIn">
+                <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-scaleIn">
+                  <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
+                    <svg className="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                   </div>
-                  <h3 className="text-xl font-bold text-dark-text-primary text-center mb-2">Delete Note?</h3>
-                  <p className="text-dark-text-secondary text-center mb-6">
+                  <h3 className="text-xl font-bold text-neutral-900 text-center mb-2">Delete Note?</h3>
+                  <p className="text-neutral-600 text-center mb-6">
                     Are you sure you want to delete "{selectedNote.title}"? This action cannot be undone.
                   </p>
                   <div className="flex gap-3">
                     <button
                       onClick={() => setShowDeleteConfirm(false)}
-                      className="flex-1 py-3 px-4 bg-dark-bg-tertiary hover:bg-dark-navy-dark text-dark-text-primary font-semibold rounded-xl transition-all active:scale-95 border border-dark-border-glow"
+                      className="flex-1 py-3 px-4 bg-neutral-100 hover:bg-neutral-200 text-neutral-900 font-semibold rounded-xl transition-all active:scale-95"
                     >
                       Cancel
                     </button>
                     <button
-                      onClick={handleDeleteNote}
-                      className="flex-1 py-3 px-4 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold rounded-xl transition-all active:scale-95 shadow-dark-soft"
+                      onClick={deleteNote}
+                      className="flex-1 py-3 px-4 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold rounded-xl transition-all active:scale-95 shadow-soft"
                     >
                       Delete
                     </button>

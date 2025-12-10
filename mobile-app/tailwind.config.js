@@ -13,7 +13,7 @@ export default {
           200: '#bae6fd',
           300: '#7dd3fc',
           400: '#38bdf8',
-          500: '#0ea5e9',
+          500: '#58a6ff', // Cyan/electric blue for accents
           600: '#0284c7',
           700: '#0369a1',
           800: '#075985',
@@ -22,9 +22,9 @@ export default {
         },
         accent: {
           purple: {
-            light: '#a78bfa',
-            DEFAULT: '#8b5cf6',
-            dark: '#7c3aed',
+            light: '#8b5cf6',
+            DEFAULT: '#6e40c9', // Deep purple for AI button
+            dark: '#5b21b6',
           },
           pink: {
             light: '#f472b6',
@@ -32,8 +32,8 @@ export default {
             dark: '#db2777',
           },
           cyan: {
-            light: '#22d3ee',
-            DEFAULT: '#06b6d4',
+            light: '#7dd3fc',
+            DEFAULT: '#58a6ff', // Electric blue for progress bars
             dark: '#0891b2',
           },
         },
@@ -51,6 +51,36 @@ export default {
           850: '#1a1a1a',
           900: '#171717',
           950: '#0a0a0a',
+        },
+        dark: {
+          bg: {
+            primary: '#0d1117',    // Very dark navy/charcoal - main background
+            secondary: '#161b22',  // Dark navy - cards and nav
+            tertiary: '#1a2332',   // Dark navy - alternative
+            surface: '#0f1419',    // Very dark for surfaces
+          },
+          navy: {
+            light: '#2a3f5f',      // Light navy for gradients
+            DEFAULT: '#1e2a3a',    // Deep navy for gradients
+            dark: '#1a2332',       // Dark navy
+            darker: '#0f1419',     // Darker navy
+          },
+          border: {
+            glow: '#3a4f6a',       // Subtle border glow/rim lighting
+            subtle: '#30363d',     // Subtle borders
+          },
+          text: {
+            primary: '#e6edf3',    // Light gray/off-white - main text
+            secondary: '#c9d1d9',  // Secondary text
+            muted: '#8b949e',      // Muted text
+          },
+          subject: {
+            chemistry: '#2d1a28',  // Dark burgundy/wine
+            english: '#2d2416',    // Dark amber/bronze
+            math: '#1a2d2d',       // Dark teal
+            physics: '#1d2a1d',    // Dark green
+            history: '#2d2116',    // Dark bronze
+          },
         },
       },
       fontFamily: {
@@ -96,6 +126,14 @@ export default {
         'glow-primary-lg': '0 0 40px rgba(14, 165, 233, 0.3)',
         'glow-purple': '0 0 20px rgba(139, 92, 246, 0.25)',
         'glow-purple-lg': '0 0 40px rgba(139, 92, 246, 0.3)',
+        // Dark theme shadows
+        'dark-soft': '0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px -1px rgba(0, 0, 0, 0.3)',
+        'dark-soft-md': '0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3)',
+        'dark-soft-lg': '0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4)',
+        'dark-inner': 'inset 0 1px 3px 0 rgba(0, 0, 0, 0.5)',
+        'rim-light': '0 0 0 1px rgba(58, 79, 106, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.05)',
+        'glow-cyan': '0 0 20px rgba(88, 166, 255, 0.3)',
+        'glow-cyan-lg': '0 0 40px rgba(88, 166, 255, 0.4)',
       },
       borderRadius: {
         '4xl': '2rem',

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Dashboard from './components/Dashboard'
 import AITutor from './components/AITutor'
 import Planner from './components/Planner'
@@ -6,13 +6,37 @@ import Analytics from './components/Analytics'
 import Settings from './components/Settings'
 import Scanner from './components/Scanner'
 import StudyHub from './components/StudyHub'
+import AuthScreen from './components/AuthScreen'
 import { StudyProvider } from './contexts/StudyContext'
+import authService from './services/authService'
 import './App.css'
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard')
   const [showScanner, setShowScanner] = useState(false)
   const [scannedAssignments, setScannedAssignments] = useState([])
+  const [user, setUser] = useState(null)
+  const [authLoading, setAuthLoading] = useState(true)
+
+  // Check auth state on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { user } = await authService.getCurrentUser()
+      setUser(user)
+      setAuthLoading(false)
+    }
+
+    checkAuth()
+
+    // Listen for auth state changes
+    const subscription = authService.onAuthStateChange((event, session) => {
+      setUser(session?.user || null)
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [])
 
   const tabs = [
     { id: 'dashboard', label: 'Home', icon: 'home' },
@@ -83,9 +107,26 @@ function App() {
     }
   }
 
+  // Show loading state while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary-600 via-accent-purple to-accent-pink flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
+          <p className="text-white text-lg font-semibold">Loading Focus Flow...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show auth screen if not logged in
+  if (!user) {
+    return <AuthScreen onAuthSuccess={(user) => setUser(user)} />
+  }
+
   return (
     <StudyProvider>
-      <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-primary-50/30">
+      <div className="min-h-screen bg-gradient-to-br from-dark-bg-primary via-dark-bg-surface to-dark-navy-dark">
         {/* Scanner Modal */}
         {showScanner && (
           <Scanner
@@ -104,7 +145,7 @@ function App() {
         </div>
 
       {/* Bottom Navigation - Premium iOS Style with Center Scan Button */}
-      <nav className="fixed bottom-0 left-0 right-0 glass-effect border-t border-neutral-200/60 safe-area-inset-bottom shadow-soft-lg">
+      <nav className="fixed bottom-0 left-0 right-0 bg-dark-bg-secondary border-t border-dark-border-glow safe-area-inset-bottom shadow-dark-soft-lg backdrop-blur-xl">
         <div className="max-w-md mx-auto flex justify-around items-end px-1 relative">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id
@@ -121,15 +162,15 @@ function App() {
                   }}
                   className="relative flex-1 flex flex-col items-center -mt-8 transition-all duration-200 active:scale-95"
                 >
-                  {/* Large Blue Square Container */}
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 shadow-soft-xl flex items-center justify-center mb-1 border-4 border-white">
+                  {/* Large Cyan Square Container */}
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-accent-cyan shadow-glow-cyan-lg flex items-center justify-center mb-1 border-4 border-dark-bg-secondary">
                     <div className="text-white">
                       {getIcon(tab.icon, true, true)}
                     </div>
                   </div>
 
                   {/* Label */}
-                  <span className="text-[11px] font-semibold tracking-tight text-primary-600">
+                  <span className="text-[11px] font-semibold tracking-tight text-primary-500">
                     {tab.label}
                   </span>
                 </button>
@@ -145,16 +186,16 @@ function App() {
                   isActive ? 'scale-105' : 'scale-100 active:scale-95'
                 }`}
               >
-                {/* Active Indicator */}
+                {/* Active Indicator with Cyan Glow */}
                 {isActive && (
-                  <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-primary-500 to-primary-400 rounded-full shadow-glow-primary"></div>
+                  <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-primary-500 to-accent-cyan rounded-full shadow-glow-cyan"></div>
                 )}
 
                 {/* Icon Container */}
                 <div className={`transition-all duration-200 ${
                   isActive
-                    ? 'text-primary-600'
-                    : 'text-neutral-500 active:text-neutral-600'
+                    ? 'text-primary-500 drop-shadow-[0_0_8px_rgba(88,166,255,0.5)]'
+                    : 'text-dark-text-muted active:text-dark-text-secondary'
                 }`}>
                   {getIcon(tab.icon, isActive, false)}
                 </div>
@@ -162,15 +203,15 @@ function App() {
                 {/* Label */}
                 <span className={`text-[11px] font-semibold tracking-tight transition-all duration-200 ${
                   isActive
-                    ? 'text-primary-600'
-                    : 'text-neutral-500'
+                    ? 'text-primary-500'
+                    : 'text-dark-text-muted'
                 }`}>
                   {tab.label}
                 </span>
 
                 {/* Glow Effect for AI Tab */}
                 {isActive && tab.id === 'tutor' && (
-                  <div className="absolute inset-0 bg-gradient-to-t from-accent-purple/5 to-transparent rounded-2xl pointer-events-none"></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-accent-purple/10 to-transparent rounded-2xl pointer-events-none"></div>
                 )}
               </button>
             )

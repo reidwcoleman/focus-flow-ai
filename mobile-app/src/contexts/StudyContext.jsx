@@ -1,11 +1,12 @@
 /**
  * Study Context for Focus Flow
- * Global state management for notes and flashcards
+ * Global state management for notes and flashcards with Supabase
  */
 
 import { createContext, useContext, useState, useEffect } from 'react'
-import notesService from '../services/notesService'
-import flashcardService from '../services/flashcardService'
+import supabaseNotesService from '../services/supabaseNotesService'
+import supabaseFlashcardService from '../services/supabaseFlashcardService'
+import authService from '../services/authService'
 
 const StudyContext = createContext(null)
 
@@ -19,18 +20,36 @@ export function StudyProvider({ children }) {
   const [flashcards, setFlashcards] = useState([])
   const [flashcardsLoading, setFlashcardsLoading] = useState(true)
 
-  // Load data on mount
+  // Load data on mount and auth state changes
   useEffect(() => {
     loadNotes()
     loadFlashcards()
+
+    // Subscribe to auth state changes
+    const subscription = authService.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN') {
+        // Reload data when user signs in
+        loadNotes()
+        loadFlashcards()
+      } else if (event === 'SIGNED_OUT') {
+        // Clear data when user signs out
+        setNotes([])
+        setDecks([])
+        setFlashcards([])
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [])
 
   // ===== NOTES ACTIONS =====
 
-  const loadNotes = () => {
+  const loadNotes = async () => {
     setNotesLoading(true)
     try {
-      const loadedNotes = notesService.getAllNotes()
+      const loadedNotes = await supabaseNotesService.getAllNotes()
       setNotes(loadedNotes)
     } catch (error) {
       console.error('Failed to load notes:', error)
@@ -39,10 +58,12 @@ export function StudyProvider({ children }) {
     }
   }
 
-  const addNote = (noteData) => {
+  const addNote = async (noteData) => {
     try {
-      const newNote = notesService.createNote(noteData)
-      setNotes(prev => [newNote, ...prev])
+      const newNote = await supabaseNotesService.createNote(noteData)
+      if (newNote) {
+        setNotes(prev => [newNote, ...prev])
+      }
       return newNote
     } catch (error) {
       console.error('Failed to add note:', error)
@@ -50,9 +71,9 @@ export function StudyProvider({ children }) {
     }
   }
 
-  const updateNote = (id, updates) => {
+  const updateNote = async (id, updates) => {
     try {
-      const updatedNote = notesService.updateNote(id, updates)
+      const updatedNote = await supabaseNotesService.updateNote(id, updates)
       if (updatedNote) {
         setNotes(prev => prev.map(note =>
           note.id === id ? updatedNote : note
@@ -65,9 +86,9 @@ export function StudyProvider({ children }) {
     }
   }
 
-  const deleteNote = (id) => {
+  const deleteNote = async (id) => {
     try {
-      const success = notesService.deleteNote(id)
+      const success = await supabaseNotesService.deleteNote(id)
       if (success) {
         setNotes(prev => prev.filter(note => note.id !== id))
       }
@@ -78,17 +99,17 @@ export function StudyProvider({ children }) {
     }
   }
 
-  const searchNotes = (query) => {
-    return notesService.searchNotes(query)
+  const searchNotes = async (query) => {
+    return await supabaseNotesService.searchNotes(query)
   }
 
-  const getNotesBySubject = (subject) => {
-    return notesService.getNotesBySubject(subject)
+  const getNotesBySubject = async (subject) => {
+    return await supabaseNotesService.getNotesBySubject(subject)
   }
 
-  const toggleNoteFavorite = (id) => {
+  const toggleNoteFavorite = async (id) => {
     try {
-      const updatedNote = notesService.toggleFavorite(id)
+      const updatedNote = await supabaseNotesService.toggleFavorite(id)
       if (updatedNote) {
         setNotes(prev => prev.map(note =>
           note.id === id ? updatedNote : note
@@ -103,13 +124,19 @@ export function StudyProvider({ children }) {
 
   // ===== FLASHCARD ACTIONS =====
 
-  const loadFlashcards = () => {
+  const loadFlashcards = async () => {
     setFlashcardsLoading(true)
     try {
-      const loadedDecks = flashcardService.getAllDecks()
-      const loadedCards = flashcardService.flashcards // Access all cards
+      const loadedDecks = await supabaseFlashcardService.getAllDecks()
       setDecks(loadedDecks)
-      setFlashcards(loadedCards)
+
+      // Load all cards for all decks
+      const allCards = []
+      for (const deck of loadedDecks) {
+        const deckCards = await supabaseFlashcardService.getCardsByDeck(deck.id)
+        allCards.push(...deckCards)
+      }
+      setFlashcards(allCards)
     } catch (error) {
       console.error('Failed to load flashcards:', error)
     } finally {
@@ -117,10 +144,12 @@ export function StudyProvider({ children }) {
     }
   }
 
-  const addDeck = (deckData) => {
+  const addDeck = async (deckData) => {
     try {
-      const newDeck = flashcardService.createDeck(deckData)
-      setDecks(prev => [newDeck, ...prev])
+      const newDeck = await supabaseFlashcardService.createDeck(deckData)
+      if (newDeck) {
+        setDecks(prev => [newDeck, ...prev])
+      }
       return newDeck
     } catch (error) {
       console.error('Failed to add deck:', error)
@@ -128,9 +157,9 @@ export function StudyProvider({ children }) {
     }
   }
 
-  const updateDeck = (id, updates) => {
+  const updateDeck = async (id, updates) => {
     try {
-      const updatedDeck = flashcardService.updateDeck(id, updates)
+      const updatedDeck = await supabaseFlashcardService.updateDeck(id, updates)
       if (updatedDeck) {
         setDecks(prev => prev.map(deck =>
           deck.id === id ? updatedDeck : deck
@@ -143,13 +172,13 @@ export function StudyProvider({ children }) {
     }
   }
 
-  const deleteDeck = (id) => {
+  const deleteDeck = async (id) => {
     try {
-      const success = flashcardService.deleteDeck(id)
+      const success = await supabaseFlashcardService.deleteDeck(id)
       if (success) {
         setDecks(prev => prev.filter(deck => deck.id !== id))
         // Reload flashcards to remove deleted deck's cards
-        loadFlashcards()
+        await loadFlashcards()
       }
       return success
     } catch (error) {
@@ -158,9 +187,9 @@ export function StudyProvider({ children }) {
     }
   }
 
-  const addCard = (cardData) => {
+  const addCard = async (cardData) => {
     try {
-      const newCard = flashcardService.createCard(cardData)
+      const newCard = await supabaseFlashcardService.createCard(cardData)
       if (newCard) {
         setFlashcards(prev => [...prev, newCard])
         // Update deck's cardIds
@@ -177,9 +206,9 @@ export function StudyProvider({ children }) {
     }
   }
 
-  const updateCard = (id, updates) => {
+  const updateCard = async (id, updates) => {
     try {
-      const updatedCard = flashcardService.updateCard(id, updates)
+      const updatedCard = await supabaseFlashcardService.updateCard(id, updates)
       if (updatedCard) {
         setFlashcards(prev => prev.map(card =>
           card.id === id ? updatedCard : card
@@ -192,13 +221,13 @@ export function StudyProvider({ children }) {
     }
   }
 
-  const deleteCard = (id) => {
+  const deleteCard = async (id) => {
     try {
-      const success = flashcardService.deleteCard(id)
+      const success = await supabaseFlashcardService.deleteCard(id)
       if (success) {
         setFlashcards(prev => prev.filter(card => card.id !== id))
         // Reload decks to update cardIds
-        loadFlashcards()
+        await loadFlashcards()
       }
       return success
     } catch (error) {
@@ -207,11 +236,13 @@ export function StudyProvider({ children }) {
     }
   }
 
-  const addDeckWithCards = (deckData, cardsData) => {
+  const addDeckWithCards = async (deckData, cardsData) => {
     try {
-      const result = flashcardService.createDeckWithCards(deckData, cardsData)
-      setDecks(prev => [result.deck, ...prev])
-      setFlashcards(prev => [...prev, ...result.cards])
+      const result = await supabaseFlashcardService.createDeckWithCards(deckData, cardsData)
+      if (result) {
+        setDecks(prev => [result.deck, ...prev])
+        setFlashcards(prev => [...prev, ...result.cards])
+      }
       return result
     } catch (error) {
       console.error('Failed to add deck with cards:', error)
@@ -219,9 +250,9 @@ export function StudyProvider({ children }) {
     }
   }
 
-  const recordCardReview = (cardId, rating) => {
+  const recordCardReview = async (cardId, rating) => {
     try {
-      const updatedCard = flashcardService.recordReview(cardId, rating)
+      const updatedCard = await supabaseFlashcardService.recordReview(cardId, rating)
       if (updatedCard) {
         setFlashcards(prev => prev.map(card =>
           card.id === cardId ? updatedCard : card
@@ -234,26 +265,26 @@ export function StudyProvider({ children }) {
     }
   }
 
-  const getDueCards = (deckId = null) => {
-    return flashcardService.getDueCards(deckId)
+  const getDueCards = async (deckId = null) => {
+    return await supabaseFlashcardService.getDueCards(deckId)
   }
 
-  const getCardsByDeck = (deckId) => {
-    return flashcardService.getCardsByDeck(deckId)
+  const getCardsByDeck = async (deckId) => {
+    return await supabaseFlashcardService.getCardsByDeck(deckId)
   }
 
-  const getDeckStats = (deckId) => {
-    return flashcardService.getDeckStats(deckId)
+  const getDeckStats = async (deckId) => {
+    return await supabaseFlashcardService.getDeckStats(deckId)
   }
 
   // ===== STATISTICS =====
 
-  const getNotesStats = () => {
-    return notesService.getStatistics()
+  const getNotesStats = async () => {
+    return await supabaseNotesService.getStatistics()
   }
 
-  const getFlashcardsStats = () => {
-    return flashcardService.getOverallStats()
+  const getFlashcardsStats = async () => {
+    return await supabaseFlashcardService.getOverallStats()
   }
 
   // Context value
