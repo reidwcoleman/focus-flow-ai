@@ -21,6 +21,7 @@ const Scanner = ({ onClose, onCapture, initialScanMode = 'homework' }) => {
   const [isProcessing, setIsProcessing] = useState(false)
   const [processingStep, setProcessingStep] = useState('')
   const [error, setError] = useState(null)
+  const [isSaving, setIsSaving] = useState(false)
 
   // Refs
   const videoRef = useRef(null)
@@ -154,19 +155,36 @@ const Scanner = ({ onClose, onCapture, initialScanMode = 'homework' }) => {
     }
   }
 
-  const saveFlashcards = () => {
+  const saveFlashcards = async () => {
     if (flashcardsData) {
-      // Save deck with cards to StudyContext
-      addDeckWithCards(
-        {
-          title: flashcardsData.title,
-          description: `Generated from scanned image`,
-          subject: flashcardsData.subject,
-          sourceImage: capturedImage
-        },
-        flashcardsData.flashcards
-      )
-      onClose()
+      setIsSaving(true)
+      setError(null)
+
+      try {
+        // Save deck with cards to StudyContext
+        const result = await addDeckWithCards(
+          {
+            title: flashcardsData.title,
+            description: `Generated from scanned image`,
+            subject: flashcardsData.subject,
+            sourceImage: capturedImage
+          },
+          flashcardsData.flashcards
+        )
+
+        if (result) {
+          console.log(`✅ Successfully saved deck "${result.deck.title}" with ${result.cards.length} cards`)
+          onClose()
+        } else {
+          console.error('❌ Failed to save flashcards')
+          setError('Failed to save flashcards. Please try again.')
+        }
+      } catch (err) {
+        console.error('❌ Error saving flashcards:', err)
+        setError(err.message || 'Failed to save flashcards. Please try again.')
+      } finally {
+        setIsSaving(false)
+      }
     }
   }
 
@@ -569,13 +587,22 @@ const Scanner = ({ onClose, onCapture, initialScanMode = 'homework' }) => {
                   <div className="space-y-3">
                     <button
                       onClick={saveFlashcards}
-                      className="w-full py-4 px-6 bg-gradient-to-r from-accent-cyan to-primary-500 text-white font-semibold rounded-xl shadow-soft-lg hover:shadow-soft-xl transition-all active:scale-95"
+                      disabled={isSaving}
+                      className="w-full py-4 px-6 bg-gradient-to-r from-accent-cyan to-primary-500 text-white font-semibold rounded-xl shadow-soft-lg hover:shadow-soft-xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Save Deck ({flashcardsData.flashcards.length} cards)
+                      {isSaving ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          <span>Saving {flashcardsData.flashcards.length} cards...</span>
+                        </div>
+                      ) : (
+                        `Save Deck (${flashcardsData.flashcards.length} cards)`
+                      )}
                     </button>
                     <button
                       onClick={retake}
-                      className="w-full py-3 px-6 bg-white/10 backdrop-blur-sm text-white font-medium rounded-xl border border-white/20 hover:bg-white/20 transition-all active:scale-95"
+                      disabled={isSaving}
+                      className="w-full py-3 px-6 bg-white/10 backdrop-blur-sm text-white font-medium rounded-xl border border-white/20 hover:bg-white/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Retake Photo
                     </button>
