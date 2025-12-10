@@ -29,21 +29,23 @@ const StudyHub = () => {
   const [editedTitle, setEditedTitle] = useState('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [notesStats, setNotesStats] = useState({ totalNotes: 0 })
-  const [flashcardsStats, setFlashcardsStats] = useState({ totalDecks: 0 })
+  const [flashcardsStats, setFlashcardsStats] = useState({ totalDecks: 0, dueToday: 0 })
+  const [dueCards, setDueCards] = useState([])
 
   // Load stats on mount and when notes/decks change
   useEffect(() => {
     const loadStats = async () => {
       const nStats = await getNotesStats()
       const fStats = await getFlashcardsStats()
+      const due = await getDueCards()
       setNotesStats(nStats)
       setFlashcardsStats(fStats)
+      setDueCards(due)
     }
     loadStats()
-  }, [notes, decks, getNotesStats, getFlashcardsStats])
+  }, [notes, decks, getNotesStats, getFlashcardsStats, getDueCards])
 
-  const startDailyReview = async () => {
-    const dueCards = await getDueCards()
+  const startDailyReview = () => {
     if (dueCards.length > 0) {
       setStudySession({
         cards: dueCards,
