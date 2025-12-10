@@ -5,6 +5,7 @@
 
 import { useState } from 'react'
 import { useStudy } from '../contexts/StudyContext'
+import StudySession from './StudySession'
 
 const StudyHub = () => {
   const {
@@ -13,15 +14,67 @@ const StudyHub = () => {
     decks,
     flashcardsLoading,
     getDueCards,
+    getCardsByDeck,
     getNotesStats,
     getFlashcardsStats
   } = useStudy()
 
   const [activeSection, setActiveSection] = useState('overview')
+  const [studySession, setStudySession] = useState(null)
 
   const notesStats = getNotesStats()
   const flashcardsStats = getFlashcardsStats()
   const dueCards = getDueCards()
+
+  const startDailyReview = () => {
+    if (dueCards.length > 0) {
+      setStudySession({
+        cards: dueCards,
+        title: 'Daily Review'
+      })
+    }
+  }
+
+  const startDeckStudy = (deckId) => {
+    const deck = decks.find(d => d.id === deckId)
+    if (!deck) return
+
+    const cards = getCardsByDeck(deckId)
+    const dueCardsForDeck = cards.filter(card =>
+      new Date(card.nextReviewDate) <= new Date()
+    )
+
+    if (dueCardsForDeck.length > 0) {
+      setStudySession({
+        deckId,
+        cards: dueCardsForDeck,
+        title: deck.title
+      })
+    } else {
+      // Study all cards if none are due
+      setStudySession({
+        deckId,
+        cards: cards,
+        title: deck.title
+      })
+    }
+  }
+
+  const handleSessionComplete = () => {
+    setStudySession(null)
+  }
+
+  // Render study session if active
+  if (studySession) {
+    return (
+      <StudySession
+        deckId={studySession.deckId}
+        cards={studySession.cards}
+        onComplete={handleSessionComplete}
+        onExit={handleSessionComplete}
+      />
+    )
+  }
 
   return (
     <div className="space-y-6 pb-6">
@@ -48,7 +101,10 @@ const StudyHub = () => {
                 <p className="text-white/90 text-sm">{dueCards.length} cards waiting</p>
               </div>
             </div>
-            <button className="px-5 py-2.5 bg-white text-accent-purple font-semibold rounded-xl shadow-soft hover:shadow-soft-md transition-all active:scale-95">
+            <button
+              onClick={startDailyReview}
+              className="px-5 py-2.5 bg-white text-accent-purple font-semibold rounded-xl shadow-soft hover:shadow-soft-md transition-all active:scale-95"
+            >
               Start
             </button>
           </div>
@@ -178,7 +234,8 @@ const StudyHub = () => {
               return (
                 <div
                   key={deck.id}
-                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-neutral-50 transition-all cursor-pointer"
+                  onClick={() => startDeckStudy(deck.id)}
+                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-neutral-50 transition-all cursor-pointer active:scale-95"
                 >
                   <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-accent-cyan/10 flex items-center justify-center">
                     <svg className="w-4 h-4 text-accent-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
