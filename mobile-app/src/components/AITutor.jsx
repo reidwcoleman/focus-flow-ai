@@ -14,13 +14,26 @@ const AITutor = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
   const [error, setError] = useState('')
-  const messagesEndRef = useRef(null)
+  const lastMessageRef = useRef(null)
   const textareaRef = useRef(null)
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to top of last message when new AI responses arrive
   useEffect(() => {
-    scrollToBottom()
-  }, [messages, isTyping])
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1]
+      // Only scroll to top of message for AI responses
+      if (lastMessage.role === 'assistant') {
+        scrollToLastMessage()
+      }
+    }
+  }, [messages])
+
+  // Auto-scroll when typing indicator appears
+  useEffect(() => {
+    if (isTyping) {
+      scrollToLastMessage()
+    }
+  }, [isTyping])
 
   // Auto-resize textarea
   useEffect(() => {
@@ -30,8 +43,9 @@ const AITutor = () => {
     }
   }, [inputValue])
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  const scrollToLastMessage = () => {
+    // Scroll to the START of the last message (not the bottom)
+    lastMessageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   const handleSend = async () => {
@@ -192,6 +206,7 @@ const AITutor = () => {
         {messages.map((message, index) => (
           <div
             key={message.id}
+            ref={index === messages.length - 1 ? lastMessageRef : null}
             className={`flex gap-2.5 ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fadeInUp`}
             style={{ animationDelay: `${index * 0.02}s` }}
           >
@@ -249,7 +264,7 @@ const AITutor = () => {
 
         {/* Typing Indicator */}
         {isTyping && (
-          <div className="flex gap-2.5 animate-fadeInUp">
+          <div ref={lastMessageRef} className="flex gap-2.5 animate-fadeInUp">
             <div className="flex-shrink-0 mt-1">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent-purple to-accent-purple-dark flex items-center justify-center shadow-soft">
                 <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -266,8 +281,6 @@ const AITutor = () => {
             </div>
           </div>
         )}
-
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Error Display */}
