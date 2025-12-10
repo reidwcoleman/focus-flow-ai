@@ -56,9 +56,10 @@ class AuthService {
    * Sign up a new user
    * @param {string} email
    * @param {string} password
+   * @param {Object} profileData - Optional profile data (full_name, canvas_url, canvas_token)
    * @returns {Promise<{user, session, error}>}
    */
-  async signUp(email, password) {
+  async signUp(email, password, profileData = {}) {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -71,6 +72,35 @@ class AuthService {
 
       this.currentUser = data.user
       this.session = data.session
+
+      // Create user profile with provided data
+      if (data.user && profileData) {
+        try {
+          const { error: profileError } = await supabase
+            .from('user_profiles')
+            .insert({
+              id: data.user.id,
+              email: data.user.email,
+              full_name: profileData.full_name || null,
+              canvas_url: profileData.canvas_url || null,
+              canvas_token: profileData.canvas_token || null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+
+          if (profileError) {
+            console.error('Failed to create user profile:', profileError)
+            // Don't fail the signup if profile creation fails
+            // The trigger should handle it, but this is a fallback
+          } else {
+            // Load the newly created profile
+            await this._loadUserProfile()
+          }
+        } catch (profileErr) {
+          console.error('Profile creation error:', profileErr)
+          // Continue anyway - profile can be created later
+        }
+      }
 
       return { user: data.user, session: data.session, error: null }
     } catch (error) {
