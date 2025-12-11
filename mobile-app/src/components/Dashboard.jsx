@@ -511,29 +511,6 @@ const Dashboard = ({ onOpenScanner }) => {
         </div>
       </div>
 
-      {/* Study Session CTA */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-dark-navy-dark to-dark-bg-tertiary p-6 shadow-dark-soft-lg border border-dark-border-glow">
-        <div className="relative z-10">
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <h3 className="text-dark-text-primary font-bold mb-1 tracking-tight">Ready to focus?</h3>
-              <p className="text-dark-text-muted text-sm">Start your AI-optimized study session</p>
-            </div>
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary-500 to-accent-cyan flex items-center justify-center shadow-glow-cyan">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-          </div>
-          <button className="w-full mt-4 py-3 px-4 bg-gradient-to-r from-primary-500 to-accent-cyan text-white font-semibold rounded-xl hover:shadow-glow-cyan transition-all duration-200 active:scale-[0.98] shadow-dark-soft">
-            Start Session
-          </button>
-        </div>
-
-        {/* Decorative elements */}
-        <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-primary-500/20 rounded-full blur-3xl pointer-events-none"></div>
-      </div>
-
       {/* Add Assignment Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
