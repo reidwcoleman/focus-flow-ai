@@ -86,9 +86,9 @@ const Dashboard = ({ onOpenScanner }) => {
   }
 
   const handleDeleteAssignment = async (assignmentId, assignmentSource) => {
-    // Only allow deleting manual assignments
-    if (assignmentSource !== 'manual') {
-      alert('Only manual assignments can be deleted')
+    // Only allow deleting manual and scanned assignments (not Canvas)
+    if (assignmentSource === 'canvas') {
+      alert('Canvas assignments cannot be deleted. Please delete them in Canvas.')
       return
     }
 
@@ -106,6 +106,23 @@ const Dashboard = ({ onOpenScanner }) => {
     } catch (error) {
       console.error('Failed to delete assignment:', error)
       alert('Failed to delete assignment')
+    }
+  }
+
+  const handleToggleComplete = async (assignmentId, currentStatus) => {
+    try {
+      const { error } = await assignmentsService.updateAssignment(assignmentId, {
+        completed: !currentStatus,
+        progress: !currentStatus ? 100 : 0
+      })
+
+      if (error) throw error
+
+      // Reload assignments
+      await loadAssignments()
+    } catch (error) {
+      console.error('Failed to toggle completion:', error)
+      alert('Failed to update assignment')
     }
   }
 
@@ -303,8 +320,8 @@ const Dashboard = ({ onOpenScanner }) => {
                   </div>
                 )}
 
-                {/* Delete Button - Only for manual assignments */}
-                {assignment.source === 'manual' && (
+                {/* Delete Button - For manual and scanned assignments */}
+                {assignment.source !== 'canvas' && (
                   <button
                     onClick={() => handleDeleteAssignment(assignment.id, assignment.source)}
                     className="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 hover:border-red-500/50 transition-all active:scale-95 flex items-center justify-center"
@@ -344,19 +361,46 @@ const Dashboard = ({ onOpenScanner }) => {
                 </div>
               </div>
 
-              {/* Progress Bar */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-semibold text-dark-text-secondary tracking-tight">Progress</span>
-                  <span className="text-xs font-bold text-primary-500">{assignment.progress}%</span>
-                </div>
-                <div className="w-full h-2 bg-dark-bg-primary rounded-full overflow-hidden shadow-dark-inner">
-                  <div
-                    className="h-full bg-gradient-to-r from-primary-500 to-accent-cyan rounded-full transition-all duration-500 shadow-glow-cyan"
-                    style={{ width: `${assignment.progress}%` }}
-                  ></div>
-                </div>
+              {/* Mark as Done Checkbox */}
+              <div className="flex items-center gap-3 mb-3">
+                <button
+                  onClick={() => handleToggleComplete(assignment.id, assignment.completed)}
+                  className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
+                    assignment.completed
+                      ? 'bg-green-500 border-green-500'
+                      : 'border-dark-border-glow hover:border-primary-500'
+                  }`}
+                >
+                  {assignment.completed && (
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </button>
+                <span className={`text-sm font-medium ${
+                  assignment.completed
+                    ? 'text-green-400 line-through'
+                    : 'text-dark-text-primary'
+                }`}>
+                  {assignment.completed ? 'Completed' : 'Mark as done'}
+                </span>
               </div>
+
+              {/* Progress Bar */}
+              {!assignment.completed && (
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-semibold text-dark-text-secondary tracking-tight">Progress</span>
+                    <span className="text-xs font-bold text-primary-500">{assignment.progress}%</span>
+                  </div>
+                  <div className="w-full h-2 bg-dark-bg-primary rounded-full overflow-hidden shadow-dark-inner">
+                    <div
+                      className="h-full bg-gradient-to-r from-primary-500 to-accent-cyan rounded-full transition-all duration-500 shadow-glow-cyan"
+                      style={{ width: `${assignment.progress}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
