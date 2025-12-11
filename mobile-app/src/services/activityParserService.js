@@ -79,7 +79,9 @@ Current Time: ${currentTime}
 - Places: "library", "room 205", "zoom", "online", "gym", etc.
 
 === OUTPUT FORMAT ===
-Return ONLY valid JSON with these fields:
+**CRITICAL: Return ONLY the JSON object. No explanations, no markdown, no code blocks, no additional text.**
+
+Your response must be EXACTLY this format - pure JSON only:
 {
   "title": "Brief descriptive title",
   "description": "Optional longer description or null",
@@ -92,6 +94,8 @@ Return ONLY valid JSON with these fields:
   "location": "Location or null",
   "is_all_day": false (true only if explicitly "all day")
 }
+
+DO NOT include any text before or after the JSON. DO NOT wrap in markdown. Just the JSON object.
 
 === COMPREHENSIVE EXAMPLES ===
 
@@ -180,14 +184,28 @@ class ActivityParserService {
         throw new Error('No response from AI')
       }
 
-      // Parse JSON from AI response (extract first valid JSON object)
-      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/)
+      // Parse JSON from AI response
+      // Remove markdown code blocks if present
+      let jsonString = aiResponse.replace(/```json\s*/g, '').replace(/```\s*/g, '')
+
+      // Extract JSON object (match from first { to last })
+      const jsonMatch = jsonString.match(/\{(?:[^{}]|(?:\{[^{}]*\}))*\}/s)
       if (!jsonMatch) {
         console.error('❌ AI response did not contain JSON:', aiResponse)
         throw new Error('AI response did not contain valid JSON')
       }
 
-      const parsed = JSON.parse(jsonMatch[0])
+      let parsed
+      try {
+        parsed = JSON.parse(jsonMatch[0])
+      } catch (parseError) {
+        // Try to clean up and parse again
+        const cleaned = jsonMatch[0]
+          .replace(/\n/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+        parsed = JSON.parse(cleaned)
+      }
       console.log('✅ Parsed activity data:', parsed)
 
       // Validate required fields
