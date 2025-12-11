@@ -143,7 +143,7 @@ function App() {
 
   return (
     <StudyProvider>
-      <div className="min-h-screen bg-gradient-to-br from-dark-bg-primary via-dark-bg-surface to-dark-navy-dark">
+      <div className="min-h-screen max-w-full overflow-x-hidden bg-gradient-to-br from-dark-bg-primary via-dark-bg-surface to-dark-navy-dark">
         {/* Scanner Modal */}
         {showScanner && (
           <Scanner
@@ -156,27 +156,29 @@ function App() {
         )}
 
         {/* Main Content - Keep all components mounted for instant switching */}
-        <div className="max-w-md mx-auto w-full px-5 pt-6 pb-24 overflow-y-auto">
-          <div className={`transition-opacity duration-200 ${activeTab === 'dashboard' ? 'opacity-100' : 'opacity-0 absolute pointer-events-none'}`}>
-            <Dashboard key={dashboardKey} onOpenScanner={() => setShowScanner(true)} />
-          </div>
-          <div className={`transition-opacity duration-200 ${activeTab === 'planner' ? 'opacity-100' : 'opacity-0 absolute pointer-events-none'}`}>
-            <Planner />
-          </div>
-          <div className={`transition-opacity duration-200 ${activeTab === 'tutor' ? 'opacity-100' : 'opacity-0 absolute pointer-events-none'}`}>
-            <AITutor />
-          </div>
-          <div className={`transition-opacity duration-200 ${activeTab === 'analytics' ? 'opacity-100' : 'opacity-0 absolute pointer-events-none'}`}>
-            <Analytics />
-          </div>
-          <div className={`transition-opacity duration-200 ${activeTab === 'study' ? 'opacity-100' : 'opacity-0 absolute pointer-events-none'}`}>
-            <StudyHub />
-          </div>
-          <div className={`transition-opacity duration-200 ${activeTab === 'focus' ? 'opacity-100' : 'opacity-0 absolute pointer-events-none'}`}>
-            <FocusMode />
-          </div>
-          <div className={`transition-opacity duration-200 ${activeTab === 'account' ? 'opacity-100' : 'opacity-0 absolute pointer-events-none'}`}>
-            <Account />
+        <div className="max-w-md mx-auto w-full px-5 pt-6 pb-24 overflow-y-auto overflow-x-hidden">
+          <div className="relative w-full">
+            <div className={`transition-opacity duration-200 overflow-x-hidden ${activeTab === 'dashboard' ? 'opacity-100 relative' : 'opacity-0 absolute inset-0 pointer-events-none'}`}>
+              <Dashboard key={dashboardKey} onOpenScanner={() => setShowScanner(true)} />
+            </div>
+            <div className={`transition-opacity duration-200 overflow-x-hidden ${activeTab === 'planner' ? 'opacity-100 relative' : 'opacity-0 absolute inset-0 pointer-events-none'}`}>
+              <Planner />
+            </div>
+            <div className={`transition-opacity duration-200 overflow-x-hidden ${activeTab === 'tutor' ? 'opacity-100 relative' : 'opacity-0 absolute inset-0 pointer-events-none'}`}>
+              <AITutor />
+            </div>
+            <div className={`transition-opacity duration-200 overflow-x-hidden ${activeTab === 'analytics' ? 'opacity-100 relative' : 'opacity-0 absolute inset-0 pointer-events-none'}`}>
+              <Analytics />
+            </div>
+            <div className={`transition-opacity duration-200 overflow-x-hidden ${activeTab === 'study' ? 'opacity-100 relative' : 'opacity-0 absolute inset-0 pointer-events-none'}`}>
+              <StudyHub />
+            </div>
+            <div className={`transition-opacity duration-200 overflow-x-hidden ${activeTab === 'focus' ? 'opacity-100 relative' : 'opacity-0 absolute inset-0 pointer-events-none'}`}>
+              <FocusMode />
+            </div>
+            <div className={`transition-opacity duration-200 overflow-x-hidden ${activeTab === 'account' ? 'opacity-100 relative' : 'opacity-0 absolute inset-0 pointer-events-none'}`}>
+              <Account />
+            </div>
           </div>
         </div>
 
