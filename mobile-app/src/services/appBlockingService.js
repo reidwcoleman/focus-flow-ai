@@ -62,22 +62,34 @@ class AppBlockingService {
       const startTime = new Date()
       const endTime = customEndTime || new Date(startTime.getTime() + duration * 60 * 1000)
 
+      const sessionPayload = {
+        user_id: user.id,
+        blocking_list_id: blockingListId || null,
+        blocked_apps: blockedApps,
+        start_time: startTime.toISOString(),
+        end_time: endTime.toISOString(),
+        duration_minutes: duration,
+        session_type: sessionType || 'manual',
+        is_active: true,
+      }
+
+      console.log('📝 Creating session with payload:', sessionPayload)
+
       const { data, error } = await supabase
         .from('blocking_sessions')
-        .insert({
-          user_id: user.id,
-          blocking_list_id: blockingListId || null,
-          blocked_apps: blockedApps,
-          start_time: startTime.toISOString(),
-          end_time: endTime.toISOString(),
-          duration_minutes: duration,
-          session_type: sessionType || 'manual',
-          is_active: true,
-        })
+        .insert(sessionPayload)
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ Supabase error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        })
+        throw error
+      }
 
       // Increment usage count if using a blocking list
       if (blockingListId) {
@@ -88,6 +100,12 @@ class AppBlockingService {
       return data
     } catch (error) {
       console.error('❌ Failed to create session:', error)
+
+      // Check if table exists
+      if (error.code === '42P01' || error.message?.includes('does not exist')) {
+        throw new Error('Database table missing! Please run COMPLETE_DATABASE_MIGRATION.sql in Supabase')
+      }
+
       throw error
     }
   }

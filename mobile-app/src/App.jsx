@@ -12,6 +12,7 @@ import AuthScreen from './components/AuthScreen'
 import { StudyProvider } from './contexts/StudyContext'
 import authService from './services/authService'
 import streakService from './services/streakService'
+import { printDatabaseStatus } from './utils/databaseCheck'
 import './App.css'
 
 function App() {
@@ -34,6 +35,9 @@ function App() {
         await streakService.checkAndUpdateStreak(user.id)
       }
     }
+
+    // Check database tables on mount
+    printDatabaseStatus()
 
     checkAuth()
 
