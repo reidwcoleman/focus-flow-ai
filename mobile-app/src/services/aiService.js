@@ -552,8 +552,10 @@ When students ask:
   /**
    * Send a message and get AI response
    * Automatically chooses backend or direct API based on configuration
+   * @param {string} userMessage - The user's text message
+   * @param {string} imageData - Optional base64 image data
    */
-  async sendMessage(userMessage) {
+  async sendMessage(userMessage, imageData = null) {
     if (!this.isConfigured()) {
       throw new Error('AI service not configured. Please set up Supabase or add Groq API key.')
     }

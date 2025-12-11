@@ -487,6 +487,14 @@ const AITutor = () => {
                     : 'bg-dark-bg-secondary border border-dark-border-glow shadow-dark-soft-md'
                   : 'bg-gradient-to-br from-accent-purple via-accent-purple-dark to-accent-purple-dark text-white shadow-glow-purple'
               }`}>
+                {/* Show image if message has one */}
+                {message.image && (
+                  <img
+                    src={message.image}
+                    alt="Uploaded"
+                    className="max-w-[200px] max-h-[200px] rounded-xl mb-2 border border-dark-border-subtle shadow-dark-soft object-cover"
+                  />
+                )}
                 <div
                   className={`text-[15px] leading-relaxed ${
                     message.role === 'assistant'
