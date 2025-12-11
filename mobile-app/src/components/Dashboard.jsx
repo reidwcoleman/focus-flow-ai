@@ -43,16 +43,15 @@ const Dashboard = ({ onOpenScanner }) => {
       const { user } = await authService.getCurrentUser()
       if (!user) return
 
-      const streakData = await streakService.checkAndUpdateStreak(user.id)
-      setStreak(streakData)
-
-      // Show celebration if streak increased
-      if (streakData.isNewStreak && streakData.currentStreak > 1) {
-        setShowStreakCelebration(true)
-        setTimeout(() => setShowStreakCelebration(false), 3000)
-      }
+      // Just load the current streak (App.jsx handles updating it globally)
+      const streakData = await streakService.getStreak(user.id)
+      setStreak({
+        currentStreak: streakData.currentStreak,
+        longestStreak: streakData.longestStreak,
+        isNewStreak: false
+      })
     } catch (error) {
-      console.error('Failed to check streak:', error)
+      console.error('Failed to load streak:', error)
     }
   }
 
