@@ -138,9 +138,17 @@ const Dashboard = ({ onOpenScanner }) => {
 
       // If marking as complete, trigger fly-away animation
       if (newStatus) {
-        setFlyingAwayItems(prev => new Set([...prev, assignmentId]))
+        // Optimistically update the UI to show completed state
+        setAssignments(prev => prev.map(a =>
+          a.id === assignmentId ? { ...a, completed: true, progress: 100 } : a
+        ))
 
-        // Wait for animation to complete
+        // Small delay to show the checkmark before flying away
+        setTimeout(() => {
+          setFlyingAwayItems(prev => new Set([...prev, assignmentId]))
+        }, 100)
+
+        // Wait for animation to complete, then remove from UI
         setTimeout(async () => {
           // Update in database
           await assignmentsService.updateAssignment(assignmentId, {
@@ -155,7 +163,7 @@ const Dashboard = ({ onOpenScanner }) => {
             next.delete(assignmentId)
             return next
           })
-        }, 500)
+        }, 1000) // Matched to new 0.85s animation + 150ms buffer
       } else {
         // If unchecking, update immediately without animation
         const { error } = await assignmentsService.updateAssignment(assignmentId, {
@@ -443,9 +451,15 @@ const Dashboard = ({ onOpenScanner }) => {
           {assignments.map((assignment) => (
             <div
               key={assignment.id}
-              className={`relative overflow-hidden rounded-2xl ${getSubjectBgColor(assignment.subject)} border border-dark-border-glow p-5 shadow-dark-soft-md hover:shadow-rim-light transition-all duration-500 active:scale-[0.99] ${
+              className={`relative overflow-hidden rounded-2xl ${getSubjectBgColor(assignment.subject)} border border-dark-border-glow p-5 shadow-dark-soft-md hover:shadow-rim-light transition-all active:scale-[0.99] ${
                 flyingAwayItems.has(assignment.id)
-                  ? 'animate-fly-away opacity-0 scale-75 translate-x-full'
+                  ? 'animate-fly-away'
+                  : assignment.completed
+                  ? 'duration-300 opacity-80'
+                  : 'duration-200'
+              } ${
+                assignment.completed && !flyingAwayItems.has(assignment.id)
+                  ? 'success-flash'
                   : ''
               }`}
             >

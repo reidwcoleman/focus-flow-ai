@@ -8,6 +8,7 @@ import Scanner from './components/Scanner'
 import StudyHub from './components/StudyHub'
 import FocusMode from './components/FocusMode'
 import Account from './components/Account'
+import CanvasHub from './components/CanvasHub'
 import AuthScreen from './components/AuthScreen'
 import { StudyProvider } from './contexts/StudyContext'
 import authService from './services/authService'
@@ -97,6 +98,7 @@ function App() {
     { id: 'focus', label: 'Focus', icon: 'target' },
     { id: 'tutor', label: 'AI', icon: 'sparkles' },
     { id: 'analytics', label: 'Stats', icon: 'chart' },
+    { id: 'canvas', label: 'Canvas', icon: 'academic' },
     { id: 'account', label: 'Account', icon: 'user' },
   ]
 
@@ -167,6 +169,14 @@ function App() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         )
+      case 'academic':
+        return (
+          <svg className={className} fill={isActive ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M12 14l9-5-9-5-9 5 9 5z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
+          </svg>
+        )
       default:
         return null
     }
@@ -223,6 +233,9 @@ function App() {
             </div>
             <div className={`transition-opacity duration-200 overflow-x-hidden ${activeTab === 'focus' ? 'opacity-100 relative' : 'opacity-0 absolute inset-0 pointer-events-none'}`}>
               <FocusMode />
+            </div>
+            <div className={`transition-opacity duration-200 overflow-x-hidden ${activeTab === 'canvas' ? 'opacity-100 relative' : 'opacity-0 absolute inset-0 pointer-events-none'}`}>
+              <CanvasHub />
             </div>
             <div className={`transition-opacity duration-200 overflow-x-hidden ${activeTab === 'account' ? 'opacity-100 relative' : 'opacity-0 absolute inset-0 pointer-events-none'}`}>
               <Account />

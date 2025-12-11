@@ -22,12 +22,14 @@ const AITutor = () => {
   const [chatHistory, setChatHistory] = useState([])
   const [showHistory, setShowHistory] = useState(false)
   const [saveStatus, setSaveStatus] = useState('') // 'saving', 'saved', 'error'
+  const [uploadedImage, setUploadedImage] = useState(null)
   const [showDataInfo, setShowDataInfo] = useState(() => {
     // Check if user has already seen the info banner
     return !localStorage.getItem('ai_data_info_dismissed')
   })
   const lastMessageRef = useRef(null)
   const textareaRef = useRef(null)
+  const fileInputRef = useRef(null)
 
   // Check usage limit and load AI context on component mount
   useEffect(() => {
@@ -159,8 +161,27 @@ const AITutor = () => {
     lastMessageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  const handleImageUpload = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Check if it's an image
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload an image file')
+      setTimeout(() => setError(''), 3000)
+      return
+    }
+
+    // Convert to base64
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      setUploadedImage(event.target.result)
+    }
+    reader.readAsDataURL(file)
+  }
+
   const handleSend = async () => {
-    if (!inputValue.trim() || isLoading) return
+    if ((!inputValue.trim() && !uploadedImage) || isLoading) return
 
     // Check usage limit before sending
     const hasRequests = await aiService.hasRemainingRequests()
@@ -170,14 +191,17 @@ const AITutor = () => {
     }
 
     const userMessage = inputValue.trim()
+    const imageData = uploadedImage
     setInputValue('')
+    setUploadedImage(null)
     setError('')
 
     // Add user message
     const newUserMessage = {
       id: Date.now(),
       role: 'user',
-      content: userMessage,
+      content: userMessage || '📷 [Image uploaded]',
+      image: imageData,
       timestamp: new Date(),
     }
     setMessages(prev => [...prev, newUserMessage])
@@ -190,7 +214,8 @@ const AITutor = () => {
       // Get AI response
       let aiResponse
       if (aiService.isConfigured()) {
-        aiResponse = await aiService.sendMessage(userMessage)
+        // Send message with optional image
+        aiResponse = await aiService.sendMessage(userMessage, imageData)
       } else {
         aiResponse = await aiService.getDemoResponse(userMessage)
       }
@@ -524,7 +549,48 @@ const AITutor = () => {
 
       {/* Premium Input Area */}
       <div className="flex-shrink-0 bg-dark-bg-secondary rounded-2xl p-3 shadow-dark-soft-md border border-dark-border-glow focus-within:border-accent-purple focus-within:shadow-glow-purple transition-all duration-200">
+        {/* Image Preview */}
+        {uploadedImage && (
+          <div className="mb-3 relative inline-block animate-fadeIn">
+            <img
+              src={uploadedImage}
+              alt="Uploaded"
+              className="max-w-[200px] max-h-[200px] rounded-xl border-2 border-dark-border-glow shadow-dark-soft object-cover"
+            />
+            <button
+              onClick={() => setUploadedImage(null)}
+              className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg transition-all active:scale-95"
+            >
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
+
         <div className="flex items-end gap-2.5">
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleImageUpload}
+            className="hidden"
+          />
+
+          {/* Image upload button */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading}
+            className="flex-shrink-0 w-9 h-9 rounded-lg bg-dark-bg-tertiary hover:bg-primary-500/20 border border-dark-border-glow hover:border-primary-500/50 flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+            title="Upload or scan image"
+          >
+            <svg className="w-5 h-5 text-dark-text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </button>
+
           <textarea
             ref={textareaRef}
             value={inputValue}
@@ -535,7 +601,7 @@ const AITutor = () => {
                 handleSend()
               }
             }}
-            placeholder="Ask me anything..."
+            placeholder={uploadedImage ? "Ask about this image..." : "Ask me anything..."}
             className="flex-1 resize-none bg-transparent text-dark-text-primary placeholder:text-dark-text-muted focus:outline-none py-2 text-[15px] leading-relaxed"
             rows={1}
             disabled={isLoading}
@@ -544,7 +610,7 @@ const AITutor = () => {
 
           <button
             onClick={handleSend}
-            disabled={!inputValue.trim() || isLoading}
+            disabled={(!inputValue.trim() && !uploadedImage) || isLoading}
             className="flex-shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-accent-purple to-accent-purple-dark hover:from-accent-purple-dark hover:to-accent-purple-dark disabled:from-dark-bg-tertiary disabled:to-dark-navy-dark flex items-center justify-center transition-all duration-200 disabled:cursor-not-allowed active:scale-95 shadow-glow-purple disabled:shadow-none"
           >
             {isLoading ? (

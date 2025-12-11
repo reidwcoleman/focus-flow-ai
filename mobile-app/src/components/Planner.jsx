@@ -100,9 +100,17 @@ const Planner = () => {
 
       // If marking as complete, trigger fly-away animation
       if (newStatus) {
-        setFlyingAwayItems(prev => new Set([...prev, id]))
+        // Optimistically update the UI to show completed state
+        setActivities(prev => prev.map(a =>
+          a.id === id ? { ...a, is_completed: true } : a
+        ))
 
-        // Wait for animation to complete
+        // Small delay to show the checkmark before flying away
+        setTimeout(() => {
+          setFlyingAwayItems(prev => new Set([...prev, id]))
+        }, 100)
+
+        // Wait for animation to complete, then remove from UI
         setTimeout(async () => {
           // Update in database
           await calendarService.toggleCompletion(id, true)
@@ -114,7 +122,7 @@ const Planner = () => {
             next.delete(id)
             return next
           })
-        }, 500)
+        }, 1000) // Matched to new 0.85s animation + 150ms buffer
       } else {
         // If unchecking, update immediately without animation
         await calendarService.toggleCompletion(id, false)
@@ -603,13 +611,15 @@ const Planner = () => {
                       </div>
                     )}
 
-                    <div className={`p-3 rounded-xl border transition-all duration-500 ${
-                      activity.is_completed
-                        ? 'bg-dark-bg-tertiary border-dark-border-subtle opacity-60'
-                        : 'bg-dark-bg-tertiary border-dark-border-glow'
-                    } ${
+                    <div className={`p-3 rounded-xl border transition-all ${
                       flyingAwayItems.has(activity.id)
-                        ? 'animate-fly-away opacity-0 scale-75 translate-x-full'
+                        ? 'animate-fly-away'
+                        : activity.is_completed
+                        ? 'bg-dark-bg-tertiary border-dark-border-subtle opacity-60 duration-300'
+                        : 'bg-dark-bg-tertiary border-dark-border-glow duration-200'
+                    } ${
+                      activity.is_completed && !flyingAwayItems.has(activity.id)
+                        ? 'success-flash'
                         : ''
                     }`}>
                       <div className="flex items-start gap-2.5">
@@ -721,13 +731,15 @@ const Planner = () => {
               {getFilteredActivities(dayActivities).map((activity) => (
                 <div
                   key={activity.id}
-                  className={`p-3 rounded-xl border transition-all duration-500 ${
-                    activity.is_completed
-                      ? 'bg-dark-bg-tertiary border-dark-border-subtle opacity-60'
-                      : 'bg-dark-bg-tertiary border-dark-border-glow'
-                  } ${
+                  className={`p-3 rounded-xl border transition-all ${
                     flyingAwayItems.has(activity.id)
-                      ? 'animate-fly-away opacity-0 scale-75 translate-x-full'
+                      ? 'animate-fly-away'
+                      : activity.is_completed
+                      ? 'bg-dark-bg-tertiary border-dark-border-subtle opacity-60 duration-300'
+                      : 'bg-dark-bg-tertiary border-dark-border-glow duration-200'
+                  } ${
+                    activity.is_completed && !flyingAwayItems.has(activity.id)
+                      ? 'success-flash'
                       : ''
                   }`}
                 >
