@@ -85,6 +85,30 @@ const Dashboard = ({ onOpenScanner }) => {
     }
   }
 
+  const handleDeleteAssignment = async (assignmentId, assignmentSource) => {
+    // Only allow deleting manual assignments
+    if (assignmentSource !== 'manual') {
+      alert('Only manual assignments can be deleted')
+      return
+    }
+
+    if (!confirm('Are you sure you want to delete this assignment?')) {
+      return
+    }
+
+    try {
+      const { error } = await assignmentsService.deleteAssignment(assignmentId)
+
+      if (error) throw error
+
+      // Reload assignments
+      await loadAssignments()
+    } catch (error) {
+      console.error('Failed to delete assignment:', error)
+      alert('Failed to delete assignment')
+    }
+  }
+
   const getTimeOfDayGreeting = () => {
     const hour = new Date().getHours()
     if (hour < 12) return 'Good morning'
@@ -269,15 +293,29 @@ const Dashboard = ({ onOpenScanner }) => {
               key={assignment.id}
               className={`relative overflow-hidden rounded-2xl ${getSubjectBgColor(assignment.subject)} border border-dark-border-glow p-5 shadow-dark-soft-md hover:shadow-rim-light transition-all duration-200 active:scale-[0.99]`}
             >
-              {/* AI Badge */}
-              {assignment.aiCaptured && (
-                <div className="absolute top-3.5 right-3.5">
+              {/* Badges and Actions */}
+              <div className="absolute top-3.5 right-3.5 flex items-center gap-2">
+                {/* AI Badge */}
+                {assignment.aiCaptured && (
                   <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-dark-bg-secondary/80 shadow-dark-soft border border-dark-border-glow">
                     <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-primary-500 to-accent-purple shadow-glow-cyan"></div>
                     <span className="text-xs font-semibold text-dark-text-primary tracking-tight">AI</span>
                   </div>
-                </div>
-              )}
+                )}
+
+                {/* Delete Button - Only for manual assignments */}
+                {assignment.source === 'manual' && (
+                  <button
+                    onClick={() => handleDeleteAssignment(assignment.id, assignment.source)}
+                    className="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 hover:border-red-500/50 transition-all active:scale-95 flex items-center justify-center"
+                    title="Delete assignment"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                )}
+              </div>
 
               {/* Subject Badge */}
               <div className="flex items-center gap-2 mb-2.5">
