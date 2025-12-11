@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import aiService from '../services/aiService'
 import authService from '../services/authService'
+import aiChatService from '../services/aiChatService'
 
 const AITutor = () => {
   const [messages, setMessages] = useState([
@@ -17,12 +18,20 @@ const AITutor = () => {
   const [error, setError] = useState('')
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [usageCount, setUsageCount] = useState(0)
+  const [currentChatId, setCurrentChatId] = useState(null)
+  const [chatHistory, setChatHistory] = useState([])
+  const [showHistory, setShowHistory] = useState(false)
+  const [saveStatus, setSaveStatus] = useState('') // 'saving', 'saved', 'error'
   const lastMessageRef = useRef(null)
   const textareaRef = useRef(null)
 
-  // Check usage limit on component mount
+  // Check usage limit and load AI context on component mount
   useEffect(() => {
-    const checkUsage = async () => {
+    const initialize = async () => {
+      // Load user context for AI
+      await aiService.loadUserContext()
+
+      // Check usage
       const count = await aiService.getUsageCount()
       setUsageCount(count)
 
@@ -30,9 +39,82 @@ const AITutor = () => {
       if (!hasRequests) {
         setShowUpgradeModal(true)
       }
+
+      // Load chat history
+      await loadChatHistory()
     }
-    checkUsage()
+    initialize()
   }, [])
+
+  // Load chat history
+  const loadChatHistory = async () => {
+    const chats = await aiChatService.getRecentChats()
+    setChatHistory(chats)
+  }
+
+  // Save conversation
+  const saveConversation = async () => {
+    if (messages.length <= 1) return // Don't save if only initial message
+
+    setSaveStatus('saving')
+    try {
+      const savedChat = await aiChatService.saveConversation(messages, currentChatId)
+      if (savedChat) {
+        setCurrentChatId(savedChat.id)
+        setSaveStatus('saved')
+        await loadChatHistory()
+        setTimeout(() => setSaveStatus(''), 2000)
+      } else {
+        setSaveStatus('error')
+        setTimeout(() => setSaveStatus(''), 2000)
+      }
+    } catch (err) {
+      console.error('Failed to save conversation:', err)
+      setSaveStatus('error')
+      setTimeout(() => setSaveStatus(''), 2000)
+    }
+  }
+
+  // Load a previous chat
+  const loadChat = async (chatId) => {
+    const chat = await aiChatService.getChatById(chatId)
+    if (chat) {
+      setMessages(chat.messages.map((m, i) => ({
+        ...m,
+        id: Date.now() + i,
+        timestamp: new Date(m.timestamp)
+      })))
+      setCurrentChatId(chat.id)
+      setShowHistory(false)
+      aiService.clearHistory()
+    }
+  }
+
+  // Delete a chat
+  const deleteChat = async (chatId) => {
+    if (confirm('Delete this chat?')) {
+      const success = await aiChatService.deleteChat(chatId)
+      if (success) {
+        await loadChatHistory()
+        if (currentChatId === chatId) {
+          startNewChat()
+        }
+      }
+    }
+  }
+
+  // Start a new chat
+  const startNewChat = () => {
+    setMessages([{
+      id: Date.now(),
+      role: 'assistant',
+      content: "Hi! I'm your AI tutor. I can help you understand concepts, solve problems, and prepare for exams. What would you like to work on today?",
+      timestamp: new Date(),
+    }])
+    setCurrentChatId(null)
+    setShowHistory(false)
+    aiService.clearHistory()
+  }
 
   // Auto-scroll to top of last message when new AI responses arrive
   useEffect(() => {
@@ -112,7 +194,21 @@ const AITutor = () => {
         content: aiResponse,
         timestamp: new Date(),
       }
-      setMessages(prev => [...prev, newAiMessage])
+      const updatedMessages = [...messages, newUserMessage, newAiMessage]
+      setMessages(updatedMessages)
+
+      // Auto-save conversation after AI response
+      setTimeout(async () => {
+        try {
+          const savedChat = await aiChatService.saveConversation(updatedMessages, currentChatId)
+          if (savedChat && !currentChatId) {
+            setCurrentChatId(savedChat.id)
+          }
+          await loadChatHistory()
+        } catch (error) {
+          console.error('Auto-save failed:', error)
+        }
+      }, 500)
 
       // Check if this was the last free request
       const hasRequests = await aiService.hasRemainingRequests()
@@ -179,7 +275,7 @@ const AITutor = () => {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-10rem)]">
+    <div className="flex flex-col h-[calc(100vh-10rem)] relative">
       {/* Clean Minimal Header */}
       <div className="flex-shrink-0 mb-4">
         <div className="flex items-center justify-between">
@@ -200,23 +296,29 @@ const AITutor = () => {
             </p>
           </div>
 
-          {/* Clear chat button */}
-          <button
-            onClick={() => {
-              setMessages([{
-                id: Date.now(),
-                role: 'assistant',
-                content: "Chat cleared! What would you like to learn about?",
-                timestamp: new Date(),
-              }])
-              aiService.clearHistory()
-            }}
-            className="p-2.5 rounded-xl bg-dark-bg-secondary hover:bg-dark-bg-tertiary border border-dark-border-glow transition-all duration-200 active:scale-95"
-          >
-            <svg className="w-5 h-5 text-dark-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
+          {/* Action buttons */}
+          <div className="flex items-center gap-2">
+            {/* Auto-save indicator */}
+            {currentChatId && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-green-500/10 border border-green-500/30">
+                <svg className="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-xs font-medium text-green-500">Auto-saved</span>
+              </div>
+            )}
+
+            {/* New chat button */}
+            <button
+              onClick={startNewChat}
+              className="p-2.5 rounded-xl bg-gradient-to-br from-primary-500 to-accent-cyan hover:from-primary-600 hover:to-accent-cyan-dark text-white transition-all duration-200 active:scale-95 shadow-glow-cyan"
+              title="New chat"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Usage Counter */}
@@ -242,6 +344,36 @@ const AITutor = () => {
           )}
         </div>
       </div>
+
+      {/* Chat History Quick Access */}
+      {chatHistory.length > 0 && (
+        <div className="flex-shrink-0 mb-4 animate-fadeIn">
+          <button
+            onClick={() => setShowHistory(true)}
+            className="w-full p-4 bg-gradient-to-r from-accent-purple/10 to-primary-500/10 border-2 border-accent-purple/30 rounded-2xl hover:from-accent-purple/20 hover:to-primary-500/20 hover:border-accent-purple/50 transition-all active:scale-[0.99] shadow-dark-soft relative overflow-hidden group"
+          >
+            {/* Animated gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-r from-accent-purple/0 via-accent-purple/10 to-accent-purple/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+
+            <div className="flex items-center justify-between relative z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-purple to-accent-purple-dark flex items-center justify-center shadow-glow-purple animate-pulse-soft">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <div className="text-sm font-bold text-dark-text-primary">📜 View Past Conversations</div>
+                  <div className="text-xs text-dark-text-secondary">{chatHistory.length} saved chat{chatHistory.length !== 1 ? 's' : ''} • Click to browse</div>
+                </div>
+              </div>
+              <svg className="w-5 h-5 text-accent-purple group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </button>
+        </div>
+      )}
 
       {/* Quick Questions */}
       <div className="flex-shrink-0 mb-4">
@@ -382,6 +514,97 @@ const AITutor = () => {
           </button>
         </div>
       </div>
+
+      {/* Chat History Modal */}
+      {showHistory && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 animate-fadeIn flex items-center justify-center p-4"
+          onClick={() => setShowHistory(false)}
+        >
+          <div
+            className="w-full max-w-md bg-dark-bg-secondary rounded-3xl border border-dark-border-glow shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-fadeInUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-4 border-b border-dark-border-glow">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-purple to-accent-purple-dark flex items-center justify-center shadow-glow-purple-sm">
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-bold text-dark-text-primary">Past Conversations</h3>
+                </div>
+                <button
+                  onClick={() => setShowHistory(false)}
+                  className="p-1.5 rounded-lg hover:bg-dark-bg-tertiary transition-all active:scale-95"
+                >
+                  <svg className="w-5 h-5 text-dark-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <p className="text-xs text-dark-text-muted">Click any chat to continue where you left off</p>
+            </div>
+
+            {/* Chat List */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              {chatHistory.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-dark-bg-tertiary flex items-center justify-center border border-dark-border-glow">
+                    <svg className="w-8 h-8 text-dark-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </div>
+                  <p className="text-sm text-dark-text-secondary font-medium">No chat history yet</p>
+                  <p className="text-xs text-dark-text-muted mt-1">Your conversations are auto-saved!</p>
+                  <p className="text-xs text-dark-text-muted">Start chatting and they'll appear here.</p>
+                </div>
+              ) : (
+                chatHistory.map((chat) => (
+                  <div
+                    key={chat.id}
+                    className={`group p-3 rounded-xl border transition-all cursor-pointer ${
+                      currentChatId === chat.id
+                        ? 'bg-primary-500/10 border-primary-500/40 shadow-glow-cyan-sm'
+                        : 'bg-dark-bg-tertiary border-dark-border-subtle hover:border-primary-500/30 hover:bg-dark-navy-dark'
+                    }`}
+                    onClick={() => loadChat(chat.id)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-semibold text-dark-text-primary truncate mb-1">
+                          {chat.title}
+                        </h4>
+                        <p className="text-xs text-dark-text-muted">
+                          {new Date(chat.updated_at).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          deleteChat(chat.id)
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition-all active:scale-95"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Upgrade Modal */}
       {showUpgradeModal && (

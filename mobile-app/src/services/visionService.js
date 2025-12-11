@@ -204,30 +204,36 @@ class VisionService {
    * Prompt for handwriting extraction and organization
    */
   _getHandwritingPrompt() {
-    return `You are an expert at reading handwritten notes and organizing them into clean, typed documents.
+    return `You are an expert at reading handwritten notes and organizing them into clean, beautifully formatted documents.
 
-Analyze this handwritten image and extract all text. Then organize it intelligently.
+Analyze this handwritten image and convert it into clean, organized notes.
 
-INSTRUCTIONS:
-1. Transcribe all handwritten text exactly as written
-2. Organize into logical sections with headings where appropriate
-3. Identify key terms, concepts, and important points
-4. Format as clean Markdown (use ##, **, bullet lists)
-5. Infer a title for these notes
-6. Detect the subject area (e.g., Chemistry, Math, History)
-7. Extract relevant tags/keywords
+FORMAT YOUR RESPONSE AS CLEAN MARKDOWN:
+- Use # for main title
+- Use ## for section headings
+- Use **bold** for key terms and important concepts
+- Use - or * for bullet points
+- Write clear, complete sentences
+- Organize related information together
+- Remove any artifacts, scribbles, or unclear marks
 
-Return your response as a JSON object with this structure:
-{
-  "rawText": "exact transcription with line breaks",
-  "formattedContent": "organized Markdown content with ## headings, **bold**, and lists",
-  "title": "appropriate title for these notes",
-  "subject": "detected subject (Chemistry, Math, Biology, etc.)",
-  "tags": ["keyword1", "keyword2", "keyword3"],
-  "confidence": 0.95
-}
+DO NOT include JSON, code blocks, or technical formatting.
+DO NOT add meta-commentary like "Here are the notes" or "This is about..."
+JUST provide the clean, formatted notes directly.
 
-Be thorough but concise. Focus on clarity and organization.`
+Example format:
+# Cell Biology Notes
+
+## Cell Structure
+The cell is the basic unit of life. Key components include:
+- **Nucleus**: Contains genetic material (DNA)
+- **Mitochondria**: Powerhouse of the cell
+- **Cell membrane**: Controls what enters and exits
+
+## Cell Functions
+Cells perform three main functions...
+
+Be thorough but concise. Make it look professional and easy to read.`
   }
 
   /**
@@ -272,25 +278,49 @@ Focus on active recall and understanding.`
    */
   _parseNotesResponse(aiResponse) {
     try {
-      // Try to extract JSON from response (handle markdown code blocks)
-      const jsonMatch = aiResponse.match(/```json\s*([\s\S]*?)\s*```/) ||
-                        aiResponse.match(/\{[\s\S]*\}/)
+      // Clean the response
+      let cleanResponse = aiResponse.trim()
 
-      if (!jsonMatch) {
-        throw new Error('No JSON found in response')
+      // Remove any code block markers if present
+      cleanResponse = cleanResponse.replace(/```markdown\s*/g, '').replace(/```\s*/g, '')
+
+      // Extract title from first # heading
+      const titleMatch = cleanResponse.match(/^#\s+(.+)$/m)
+      const title = titleMatch ? titleMatch[1].trim() : 'Untitled Notes'
+
+      // Detect subject from title or content
+      const subjectKeywords = {
+        'Chemistry': /chemistry|chemical|molecule|atom|reaction|compound/i,
+        'Math': /math|calculus|algebra|geometry|equation|formula/i,
+        'Biology': /biology|cell|organism|dna|protein|evolution/i,
+        'Physics': /physics|force|energy|motion|wave|quantum/i,
+        'History': /history|war|revolution|century|empire|ancient/i,
+        'English': /literature|poem|novel|shakespeare|writing/i,
+        'Computer Science': /programming|code|algorithm|software|computer/i,
       }
 
-      const jsonStr = jsonMatch[1] || jsonMatch[0]
-      const parsed = JSON.parse(jsonStr)
+      let subject = 'General'
+      for (const [subj, regex] of Object.entries(subjectKeywords)) {
+        if (regex.test(cleanResponse)) {
+          subject = subj
+          break
+        }
+      }
 
-      // Validate required fields
+      // Extract keywords (words in bold or headings)
+      const boldWords = [...cleanResponse.matchAll(/\*\*([^*]+)\*\*/g)].map(m => m[1])
+      const headings = [...cleanResponse.matchAll(/##\s+([^\n]+)/g)].map(m => m[1])
+      const tags = [...new Set([...boldWords, ...headings])]
+        .slice(0, 5)
+        .map(tag => tag.trim())
+
       return {
-        rawText: parsed.rawText || '',
-        formattedContent: parsed.formattedContent || parsed.rawText || '',
-        title: parsed.title || 'Untitled Notes',
-        subject: parsed.subject || 'General',
-        tags: Array.isArray(parsed.tags) ? parsed.tags : [],
-        confidence: parsed.confidence || 0.85
+        rawText: cleanResponse,
+        formattedContent: cleanResponse,
+        title: title,
+        subject: subject,
+        tags: tags,
+        confidence: 0.9
       }
     } catch (error) {
       console.error('Failed to parse notes response:', error)
@@ -357,12 +387,32 @@ Focus on active recall and understanding.`
    * Demo mode response for notes
    */
   _getDemoNotesResponse() {
+    const demoContent = `# Chemistry Notes - Acid-Base Reactions
+
+## Definition
+An **acid-base reaction** involves the transfer of a **proton (H+)** from one species to another.
+
+## Key Concepts
+- **Bronsted-Lowry acids** are proton donors
+- **Bases** are proton acceptors
+- **Conjugate acid-base pairs** differ by one proton
+
+## pH Scale
+- pH < 7: **acidic**
+- pH = 7: **neutral**
+- pH > 7: **basic**
+
+## Common Acids
+- HCl (hydrochloric acid)
+- H₂SO₄ (sulfuric acid)
+- CH₃COOH (acetic acid)`
+
     return {
-      rawText: `Chemistry Notes - Acid-Base Reactions\n\nDefinition: An acid-base reaction involves the transfer of a proton (H+) from one species to another.\n\nKey Concepts:\n- Bronsted-Lowry acids are proton donors\n- Bases are proton acceptors\n- Conjugate acid-base pairs\n\npH Scale:\n- pH < 7: acidic\n- pH = 7: neutral\n- pH > 7: basic\n\nCommon Acids:\n- HCl (hydrochloric acid)\n- H2SO4 (sulfuric acid)\n- CH3COOH (acetic acid)`,
-      formattedContent: `## Chemistry Notes - Acid-Base Reactions\n\n**Definition:** An acid-base reaction involves the transfer of a proton (H+) from one species to another.\n\n### Key Concepts\n- **Bronsted-Lowry acids** are proton donors\n- **Bases** are proton acceptors\n- **Conjugate acid-base pairs** - differ by one proton\n\n### pH Scale\n- pH < 7: acidic\n- pH = 7: neutral  \n- pH > 7: basic\n\n### Common Acids\n- HCl (hydrochloric acid)\n- H₂SO₄ (sulfuric acid)\n- CH₃COOH (acetic acid)`,
+      rawText: demoContent,
+      formattedContent: demoContent,
       title: 'Chemistry Notes - Acid-Base Reactions',
       subject: 'Chemistry',
-      tags: ['acids', 'bases', 'pH', 'chemistry', 'proton transfer'],
+      tags: ['acids', 'bases', 'pH', 'Bronsted-Lowry', 'proton transfer'],
       confidence: 0.95
     }
   }

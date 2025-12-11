@@ -9,20 +9,28 @@ import authService from './authService'
 class CalendarService {
   /**
    * Get all activities for a specific date range
-   * @param {Date} startDate
-   * @param {Date} endDate
+   * @param {Date|string} startDate - Date object or ISO date string (YYYY-MM-DD)
+   * @param {Date|string} endDate - Date object or ISO date string (YYYY-MM-DD)
    * @returns {Promise<Array>}
    */
   async getActivitiesByDateRange(startDate, endDate) {
     const userId = authService.getUserId()
     if (!userId) throw new Error('No user logged in')
 
+    // Convert to ISO string if Date object, otherwise use as-is
+    const startDateStr = startDate instanceof Date
+      ? startDate.toISOString().split('T')[0]
+      : startDate
+    const endDateStr = endDate instanceof Date
+      ? endDate.toISOString().split('T')[0]
+      : endDate
+
     const { data, error } = await supabase
       .from('calendar_activities')
       .select('*')
       .eq('user_id', userId)
-      .gte('activity_date', startDate.toISOString().split('T')[0])
-      .lte('activity_date', endDate.toISOString().split('T')[0])
+      .gte('activity_date', startDateStr)
+      .lte('activity_date', endDateStr)
       .order('activity_date', { ascending: true })
       .order('start_time', { ascending: true })
 

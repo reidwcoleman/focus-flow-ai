@@ -5,6 +5,8 @@
 
 import supabase from '../lib/supabase'
 import authService from './authService'
+import assignmentsService from './assignmentsService'
+import calendarService from './calendarService'
 
 const AI_CONFIG = {
   // Supabase Edge Function URL
@@ -44,7 +46,17 @@ Guidelines:
 - Be encouraging but concise
 - If topic is complex, give overview first, offer to elaborate
 
-Remember: Students are on mobile - keep it SHORT and scannable!`
+Remember: Students are on mobile - keep it SHORT and scannable!
+
+**UNDERSTANDING THE APP:**
+The student has access to two main organizational systems:
+1. **ASSIGNMENTS** (Dashboard/Homepage) - Tasks that need to be completed: homework, projects, tests, papers
+2. **CALENDAR/PLANNING** (Planning Tab) - Time-blocked schedule: classes, study sessions, events, breaks
+
+When students ask:
+- "What assignments do I have?" → Refer to ASSIGNMENTS section
+- "What's on my calendar/schedule/planning?" → Refer to CALENDAR section
+- "What should I work on?" → Consider both ASSIGNMENTS and CALENDAR together`
   }
 
   /**
@@ -57,19 +69,43 @@ Remember: Students are on mobile - keep it SHORT and scannable!`
 
     let contextPrompt = this.baseSystemPrompt + '\n\n**STUDENT CONTEXT:**\n'
 
+    // Add upcoming assignments (Dashboard - tasks to complete)
+    if (this.userContext.assignments && this.userContext.assignments.length > 0) {
+      contextPrompt += `\n📚 ASSIGNMENTS (Dashboard/Homepage - Tasks to Complete):\n`
+      this.userContext.assignments.slice(0, 5).forEach(assignment => {
+        const dueDate = assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : 'No due date'
+        const status = assignment.completed ? '✓ Complete' : `${assignment.progress || 0}% done`
+        contextPrompt += `- ${assignment.title} (${assignment.subject}) - Due: ${dueDate} - ${status}\n`
+      })
+      if (this.userContext.assignments.length > 5) {
+        contextPrompt += `... and ${this.userContext.assignments.length - 5} more assignments\n`
+      }
+    } else {
+      contextPrompt += `\n📚 ASSIGNMENTS (Dashboard/Homepage): No assignments yet\n`
+    }
+
+    // Add calendar/schedule for next week (Planning tab - time-blocked events)
+    if (this.userContext.calendar && this.userContext.calendar.length > 0) {
+      contextPrompt += `\n📅 CALENDAR/PLANNING (Planning Tab - Schedule & Events):\n`
+      this.userContext.calendar.slice(0, 10).forEach(activity => {
+        const date = new Date(activity.activity_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+        const time = activity.start_time ? `at ${activity.start_time}` : ''
+        const duration = activity.duration_minutes ? `(${activity.duration_minutes}min)` : ''
+        const type = activity.activity_type || 'activity'
+        contextPrompt += `- ${date} ${time}: ${activity.title} ${duration} [${type}]\n`
+      })
+      if (this.userContext.calendar.length > 10) {
+        contextPrompt += `... and ${this.userContext.calendar.length - 10} more activities\n`
+      }
+    } else {
+      contextPrompt += `\n📅 CALENDAR/PLANNING (Planning Tab): No scheduled activities\n`
+    }
+
     // Add grades/classes info
     if (this.userContext.grades && this.userContext.grades.length > 0) {
       contextPrompt += `\nClasses & Current Grades:\n`
       this.userContext.grades.forEach(g => {
         contextPrompt += `- ${g.subject}: ${g.current}%\n`
-      })
-    }
-
-    // Add schedule info
-    if (this.userContext.schedule && this.userContext.schedule.length > 0) {
-      contextPrompt += `\nToday's Schedule:\n`
-      this.userContext.schedule.forEach(s => {
-        contextPrompt += `- ${s.time}: ${s.title} (${s.subject})\n`
       })
     }
 
@@ -89,13 +125,17 @@ Remember: Students are on mobile - keep it SHORT and scannable!`
       })
     }
 
-    contextPrompt += `\nUse this context to personalize responses, reference their classes, and suggest relevant study materials!`
+    contextPrompt += `\n**IMPORTANT INSTRUCTIONS:**
+- When asked about "assignments" or "homework" → Reference the ASSIGNMENTS section above
+- When asked about "calendar", "schedule", "planning", or "what's coming up" → Reference the CALENDAR/PLANNING section
+- When helping prioritize → Consider both assignments (what to work on) and calendar (when to work on it)
+- Always use this context to give PERSONALIZED advice specific to their actual work!`
 
     return contextPrompt
   }
 
   /**
-   * Load user context (grades, notes, decks, schedule)
+   * Load user context (assignments, calendar, notes, decks, grades)
    */
   async loadUserContext() {
     const userId = authService.getUserId()
@@ -105,6 +145,22 @@ Remember: Students are on mobile - keep it SHORT and scannable!`
     }
 
     try {
+      // Load upcoming assignments
+      const { data: assignmentsData } = await assignmentsService.getUpcomingAssignments()
+      const assignments = assignmentsService.toAppFormatBatch(assignmentsData || [])
+
+      // Load calendar activities for the next 30 days
+      const today = new Date()
+      const nextMonth = new Date(today)
+      nextMonth.setDate(today.getDate() + 30)
+
+      const { data: calendarData } = await calendarService.getActivitiesByDateRange(
+        today.toISOString().split('T')[0],
+        nextMonth.toISOString().split('T')[0]
+      )
+
+      console.log('📅 Loaded calendar data for AI:', calendarData)
+
       // Load notes
       const { data: notes } = await supabase
         .from('notes')
@@ -133,17 +189,14 @@ Remember: Students are on mobile - keep it SHORT and scannable!`
       }
 
       // TODO: Load grades from Canvas when available
-      // For now, use placeholder
       const grades = []
 
-      // TODO: Load schedule from plan
-      const schedule = []
-
       this.userContext = {
+        assignments: assignments || [],
+        calendar: calendarData || [],
         notes: notes || [],
         decks: decks || [],
         grades,
-        schedule,
       }
     } catch (error) {
       console.error('Failed to load user context:', error)
@@ -258,8 +311,8 @@ Remember: Students are on mobile - keep it SHORT and scannable!`
       throw new Error('Supabase URL not configured. Add VITE_SUPABASE_URL to .env')
     }
 
-    // Load user context if not already loaded
-    if (!this.userContext && authService.isAuthenticated()) {
+    // Always load fresh user context before sending
+    if (authService.isAuthenticated()) {
       await this.loadUserContext()
     }
 
@@ -313,8 +366,8 @@ Remember: Students are on mobile - keep it SHORT and scannable!`
       throw new Error('Groq API key not configured')
     }
 
-    // Load user context if not already loaded
-    if (!this.userContext && authService.isAuthenticated()) {
+    // Always load fresh user context before sending
+    if (authService.isAuthenticated()) {
       await this.loadUserContext()
     }
 
