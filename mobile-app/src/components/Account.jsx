@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react'
 import authService from '../services/authService'
+import canvasService from '../services/canvasService'
 
 export default function Account() {
   const [user, setUser] = useState(null)
@@ -12,8 +13,12 @@ export default function Account() {
   const [isEditingName, setIsEditingName] = useState(false)
   const [newName, setNewName] = useState('')
   const [canvasUrl, setCanvasUrl] = useState('')
+  const [canvasToken, setCanvasToken] = useState('')
+  const [showCanvasToken, setShowCanvasToken] = useState(false)
   const [isEditingCanvas, setIsEditingCanvas] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [testing, setTesting] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -32,6 +37,7 @@ export default function Account() {
     setProfile(profile)
     setNewName(profile?.full_name || user?.email?.split('@')[0] || '')
     setCanvasUrl(profile?.canvas_url || '')
+    setCanvasToken(profile?.canvas_token || '')
   }
 
   const handleSaveName = async () => {
@@ -65,25 +71,82 @@ export default function Account() {
   }
 
   const handleSaveCanvas = async () => {
+    if (!canvasUrl.trim()) {
+      setError('Canvas URL is required')
+      return
+    }
+
+    if (!canvasToken.trim()) {
+      setError('Canvas API key is required')
+      return
+    }
+
     setSaving(true)
     setError('')
     setSuccess('')
 
     try {
-      const result = await authService.updateUserProfile({ canvas_url: canvasUrl.trim() })
+      const result = await authService.updateUserProfile({
+        canvas_url: canvasUrl.trim(),
+        canvas_token: canvasToken.trim()
+      })
 
       if (result.error) {
-        setError('Failed to update Canvas URL')
+        setError('Failed to update Canvas credentials')
       } else {
-        setSuccess('Canvas integration updated!')
+        setSuccess('Canvas integration updated! Test connection to verify.')
         setIsEditingCanvas(false)
         await loadUserData()
-        setTimeout(() => setSuccess(''), 3000)
+        setTimeout(() => setSuccess(''), 5000)
       }
     } catch (err) {
-      setError('Failed to update Canvas URL')
+      setError('Failed to update Canvas credentials')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleTestConnection = async () => {
+    setTesting(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      // Reinitialize Canvas with new credentials
+      await canvasService.initializeFromProfile()
+
+      // Try to fetch user info to test connection
+      const userInfo = await canvasService.getCurrentUser()
+
+      if (userInfo) {
+        setSuccess(`✅ Connected successfully! Welcome, ${userInfo.name || 'Canvas User'}!`)
+        setTimeout(() => setSuccess(''), 5000)
+      }
+    } catch (err) {
+      setError(`Connection failed: ${err.message}`)
+    } finally {
+      setTesting(false)
+    }
+  }
+
+  const handleSyncAssignments = async () => {
+    setSyncing(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const result = await canvasService.syncToDatabase()
+
+      if (result.success) {
+        setSuccess(`✅ ${result.message}`)
+        setTimeout(() => setSuccess(''), 5000)
+      } else {
+        setError(result.message || 'Sync failed')
+      }
+    } catch (err) {
+      setError(`Sync failed: ${err.message}`)
+    } finally {
+      setSyncing(false)
     }
   }
 
@@ -197,18 +260,61 @@ export default function Account() {
         </div>
 
         {isEditingCanvas ? (
-          <div className="space-y-3">
-            <input
-              type="url"
-              value={canvasUrl}
-              onChange={(e) => setCanvasUrl(e.target.value)}
-              className="w-full bg-dark-bg-primary border border-dark-border-glow rounded-xl px-4 py-3 text-dark-text-primary placeholder-dark-text-muted focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
-              placeholder="https://your-school.instructure.com"
-              autoFocus
-            />
-            <p className="text-xs text-dark-text-muted">
-              Enter your Canvas LMS URL to enable integration features
-            </p>
+          <div className="space-y-4">
+            {/* Canvas URL */}
+            <div>
+              <label className="block text-sm font-medium text-dark-text-secondary mb-2">
+                Canvas URL
+              </label>
+              <input
+                type="url"
+                value={canvasUrl}
+                onChange={(e) => setCanvasUrl(e.target.value)}
+                className="w-full bg-dark-bg-primary border border-dark-border-glow rounded-xl px-4 py-3 text-dark-text-primary placeholder-dark-text-muted focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
+                placeholder="https://wcpss.instructure.com"
+                autoFocus
+              />
+              <p className="text-xs text-dark-text-muted mt-1.5">
+                Example: https://wcpss.instructure.com
+              </p>
+            </div>
+
+            {/* Canvas API Key */}
+            <div>
+              <label className="block text-sm font-medium text-dark-text-secondary mb-2">
+                Canvas API Key
+              </label>
+              <div className="relative">
+                <input
+                  type={showCanvasToken ? 'text' : 'password'}
+                  value={canvasToken}
+                  onChange={(e) => setCanvasToken(e.target.value)}
+                  className="w-full bg-dark-bg-primary border border-dark-border-glow rounded-xl px-4 py-3 pr-12 text-dark-text-primary placeholder-dark-text-muted focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all font-mono text-sm"
+                  placeholder="Paste your Canvas API token"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCanvasToken(!showCanvasToken)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-dark-text-muted hover:text-dark-text-primary transition-colors"
+                >
+                  {showCanvasToken ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+              <p className="text-xs text-dark-text-muted mt-1.5">
+                Get your API key from: Canvas → Account → Settings → New Access Token
+              </p>
+            </div>
+
+            {/* Buttons */}
             <div className="flex gap-2">
               <button
                 onClick={handleSaveCanvas}
@@ -221,6 +327,7 @@ export default function Account() {
                 onClick={() => {
                   setIsEditingCanvas(false)
                   setCanvasUrl(profile?.canvas_url || '')
+                  setCanvasToken(profile?.canvas_token || '')
                 }}
                 disabled={saving}
                 className="flex-1 bg-dark-bg-primary border border-dark-border-glow text-dark-text-secondary font-semibold py-2.5 rounded-xl hover:bg-dark-bg-surface transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -230,17 +337,56 @@ export default function Account() {
             </div>
           </div>
         ) : (
-          <div>
-            <p className="text-dark-text-primary mb-2">
-              {profile?.canvas_url || 'Not configured'}
-            </p>
-            {profile?.canvas_url && (
-              <div className="flex items-center gap-2 text-xs text-green-400">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Connected
-              </div>
+          <div className="space-y-3">
+            {/* Status */}
+            <div>
+              <p className="text-sm text-dark-text-secondary mb-1">Canvas URL:</p>
+              <p className="text-dark-text-primary">
+                {profile?.canvas_url || 'Not configured'}
+              </p>
+            </div>
+
+            {profile?.canvas_url && profile?.canvas_token && (
+              <>
+                <div className="flex items-center gap-2 text-xs text-green-400">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Configured
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={handleTestConnection}
+                    disabled={testing}
+                    className="flex-1 bg-dark-bg-primary border border-primary-500/50 text-primary-500 font-semibold py-2.5 rounded-xl hover:bg-primary-500/10 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testing ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-primary-500/30 border-t-primary-500 rounded-full animate-spin"></div>
+                        Testing...
+                      </span>
+                    ) : (
+                      'Test Connection'
+                    )}
+                  </button>
+                  <button
+                    onClick={handleSyncAssignments}
+                    disabled={syncing}
+                    className="flex-1 bg-gradient-to-r from-accent-purple to-accent-pink text-white font-semibold py-2.5 rounded-xl hover:shadow-glow-purple-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {syncing ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        Syncing...
+                      </span>
+                    ) : (
+                      'Sync Assignments'
+                    )}
+                  </button>
+                </div>
+              </>
             )}
           </div>
         )}
