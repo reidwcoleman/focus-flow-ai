@@ -11,33 +11,58 @@ import supabase from '../lib/supabase'
  */
 const getActivityParserPrompt = () => {
   const now = new Date()
-  const today = now.toISOString().split('T')[0]
+
+  // Use local timezone for accurate date calculations
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  const today = `${year}-${month}-${day}`
+
   const dayOfWeek = now.toLocaleDateString('en-US', { weekday: 'long' })
   const currentTime = now.toTimeString().slice(0, 5)
+  const currentDay = now.getDate()
+  const currentMonth = now.getMonth() + 1
 
-  // Calculate next week's dates for examples
-  const tomorrow = new Date(now)
-  tomorrow.setDate(now.getDate() + 1)
-  const tomorrowStr = tomorrow.toISOString().split('T')[0]
+  // Calculate tomorrow using local timezone
+  const tomorrowDate = new Date(now)
+  tomorrowDate.setDate(now.getDate() + 1)
+  const tomorrowDay = tomorrowDate.getDate()
+  const tomorrowMonth = tomorrowDate.getMonth() + 1
+  const tomorrowYear = tomorrowDate.getFullYear()
+  const tomorrowStr = `${tomorrowYear}-${String(tomorrowMonth).padStart(2, '0')}-${String(tomorrowDay).padStart(2, '0')}`
 
   return `You are an ULTRA-SMART AI calendar assistant with advanced natural language understanding. Parse activity descriptions into structured calendar events with MAXIMUM INTELLIGENCE about dates, times, and context.
 
 === CURRENT CONTEXT ===
-Today: ${today} (${dayOfWeek})
+Today: ${today} (${dayOfWeek}) - Day ${currentDay} of month ${currentMonth}
+Tomorrow: ${tomorrowStr} - Day ${tomorrowDay}
 Current Time: ${currentTime}
 
-=== PARSING RULES ===
+=== DATE PARSING RULES (CRITICAL - READ CAREFULLY) ===
 
-**DATES - Be SMART about relative dates:**
+**ABSOLUTE DATES TAKE PRIORITY OVER RELATIVE DATES:**
+- If user mentions a SPECIFIC DATE NUMBER (like "on the 17th", "Dec 25", "12/17"), USE THAT DATE
+- If user says "tomorrow on the 17th" and today is the ${currentDay}, they mean the 17th (NOT ${tomorrowDay})
+- If user says "math test on the 17th", use 2025-12-17 (current year, current/next month)
+- If the day number is LESS than today's day (${currentDay}), assume NEXT month
+- If the day number is GREATER than today's day, assume THIS month
+
+**RELATIVE DATES (only when NO specific date number mentioned):**
 - "today" = ${today}
 - "tomorrow" = ${tomorrowStr}
-- "Monday", "Tuesday", etc. = NEXT occurrence of that day (if today is Tuesday and user says "Monday", use NEXT Monday)
+- "Monday", "Tuesday", etc. = NEXT occurrence of that day
 - "next Monday" = the Monday of NEXT week (not this week)
 - "this Friday" = the Friday of THIS week
-- "in 3 days" = calculate from today
-- "next week" = 7 days from today
-- Absolute dates: "Dec 25", "12/25", "December 25th" = parse to YYYY-MM-DD
-- If no date mentioned but time is given, assume TODAY
+- "in 3 days" = calculate from ${today}
+- "next week" = 7 days from ${today}
+
+**EXAMPLES OF CORRECT DATE PARSING:**
+- Today is ${today} (day ${currentDay})
+- "tomorrow" → ${tomorrowStr}
+- "on the 17th" → 2025-12-17 (explicit date takes priority)
+- "tomorrow on the 17th" → 2025-12-17 (explicit date overrides "tomorrow")
+- "math test on the 25th" → 2025-12-25 (this month since 25 > ${currentDay})
+- If today were Dec 28: "on the 5th" → 2026-01-05 (next month since 5 < 28)
 
 **TIMES - Parse ALL formats:**
 - "3pm", "3:30pm" = 15:00:00, 15:30:00
@@ -102,29 +127,29 @@ DO NOT include any text before or after the JSON. DO NOT wrap in markdown. Just 
 Input: "Study chemistry tomorrow at 3pm for 2 hours"
 Output: {"title":"Study Chemistry","description":"Chemistry study session","activity_date":"${tomorrowStr}","start_time":"15:00:00","end_time":"17:00:00","duration_minutes":120,"activity_type":"study","subject":"Chemistry","location":null,"is_all_day":false}
 
-Input: "Math class Monday 9am to 10:30am"
-Output: {"title":"Math Class","activity_date":"2025-12-15","start_time":"09:00:00","end_time":"10:30:00","duration_minutes":90,"activity_type":"class","subject":"Math","location":null,"is_all_day":false}
+Input: "math test on the 17th"
+Output: {"title":"Math Test","activity_date":"2025-12-17","activity_type":"assignment","subject":"Math","location":null,"is_all_day":false}
 
-Input: "Team meeting next Friday afternoon in room 205"
-Output: {"title":"Team Meeting","activity_date":"2025-12-19","start_time":"14:00:00","duration_minutes":60,"activity_type":"meeting","subject":null,"location":"room 205","is_all_day":false}
+Input: "chemistry lab tomorrow on the 15th at 2pm"
+Output: {"title":"Chemistry Lab","activity_date":"2025-12-15","start_time":"14:00:00","activity_type":"class","subject":"Chemistry","location":null,"is_all_day":false}
 
-Input: "finish physics homework by thursday"
-Output: {"title":"Physics Homework","activity_date":"2025-12-12","activity_type":"assignment","subject":"Physics","location":null,"is_all_day":false}
+Input: "finish physics homework by the 20th"
+Output: {"title":"Physics Homework","activity_date":"2025-12-20","activity_type":"assignment","subject":"Physics","location":null,"is_all_day":false}
 
 Input: "basketball practice tomorrow evening"
 Output: {"title":"Basketball Practice","activity_date":"${tomorrowStr}","start_time":"18:00:00","duration_minutes":90,"activity_type":"event","subject":null,"location":null,"is_all_day":false}
 
-Input: "study session for history exam this saturday morning"
-Output: {"title":"Study for History Exam","activity_date":"2025-12-14","start_time":"09:00:00","duration_minutes":120,"activity_type":"study","subject":"History","location":null,"is_all_day":false}
+Input: "study session for history exam on December 18th at 9am"
+Output: {"title":"Study for History Exam","activity_date":"2025-12-18","start_time":"09:00:00","duration_minutes":120,"activity_type":"study","subject":"History","location":null,"is_all_day":false}
 
 Input: "lunch break at noon for 30 minutes"
 Output: {"title":"Lunch Break","activity_date":"${today}","start_time":"12:00:00","end_time":"12:30:00","duration_minutes":30,"activity_type":"break","subject":null,"location":null,"is_all_day":false}
 
-Input: "CS101 lecture tuesday 2pm library"
-Output: {"title":"CS101 Lecture","activity_date":"2025-12-17","start_time":"14:00:00","duration_minutes":60,"activity_type":"class","subject":"CS101","location":"library","is_all_day":false}
+Input: "CS101 lecture on the 16th at 2pm in library"
+Output: {"title":"CS101 Lecture","activity_date":"2025-12-16","start_time":"14:00:00","duration_minutes":60,"activity_type":"class","subject":"CS101","location":"library","is_all_day":false}
 
-Input: "dentist appointment next monday at 10:30am"
-Output: {"title":"Dentist Appointment","activity_date":"2025-12-16","start_time":"10:30:00","duration_minutes":60,"activity_type":"event","subject":null,"location":null,"is_all_day":false}
+Input: "dentist appointment on 12/22 at 10:30am"
+Output: {"title":"Dentist Appointment","activity_date":"2025-12-22","start_time":"10:30:00","duration_minutes":60,"activity_type":"event","subject":null,"location":null,"is_all_day":false}
 
 Input: "review algebra notes tonight at 8pm"
 Output: {"title":"Review Algebra Notes","activity_date":"${today}","start_time":"20:00:00","duration_minutes":60,"activity_type":"study","subject":"Algebra","location":null,"is_all_day":false}
@@ -152,6 +177,14 @@ class ActivityParserService {
       // Generate fresh prompt with current date/time context
       const contextualPrompt = getActivityParserPrompt()
 
+      // Log current date context for debugging
+      const now = new Date()
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+      const tomorrow = new Date(now)
+      tomorrow.setDate(now.getDate() + 1)
+      const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`
+
+      console.log('📅 Date Context: Today =', today, '| Tomorrow =', tomorrowStr)
       console.log('🧠 Parsing activity with ULTRA-SMART AI:', userInput)
 
       const response = await fetch(`${supabaseUrl}/functions/v1/ai-chat`, {
