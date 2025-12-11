@@ -155,15 +155,29 @@ function App() {
           />
         )}
 
-        {/* Main Content */}
+        {/* Main Content - Keep all components mounted for instant switching */}
         <div className="max-w-md mx-auto w-full px-5 pt-6 pb-24 overflow-y-auto">
-          {activeTab === 'dashboard' && <Dashboard key={dashboardKey} onOpenScanner={() => setShowScanner(true)} />}
-          {activeTab === 'planner' && <Planner />}
-          {activeTab === 'tutor' && <AITutor />}
-          {activeTab === 'analytics' && <Analytics />}
-          {activeTab === 'study' && <StudyHub />}
-          {activeTab === 'focus' && <FocusMode />}
-          {activeTab === 'account' && <Account />}
+          <div className={`transition-opacity duration-200 ${activeTab === 'dashboard' ? 'opacity-100' : 'opacity-0 absolute pointer-events-none'}`}>
+            <Dashboard key={dashboardKey} onOpenScanner={() => setShowScanner(true)} />
+          </div>
+          <div className={`transition-opacity duration-200 ${activeTab === 'planner' ? 'opacity-100' : 'opacity-0 absolute pointer-events-none'}`}>
+            <Planner />
+          </div>
+          <div className={`transition-opacity duration-200 ${activeTab === 'tutor' ? 'opacity-100' : 'opacity-0 absolute pointer-events-none'}`}>
+            <AITutor />
+          </div>
+          <div className={`transition-opacity duration-200 ${activeTab === 'analytics' ? 'opacity-100' : 'opacity-0 absolute pointer-events-none'}`}>
+            <Analytics />
+          </div>
+          <div className={`transition-opacity duration-200 ${activeTab === 'study' ? 'opacity-100' : 'opacity-0 absolute pointer-events-none'}`}>
+            <StudyHub />
+          </div>
+          <div className={`transition-opacity duration-200 ${activeTab === 'focus' ? 'opacity-100' : 'opacity-0 absolute pointer-events-none'}`}>
+            <FocusMode />
+          </div>
+          <div className={`transition-opacity duration-200 ${activeTab === 'account' ? 'opacity-100' : 'opacity-0 absolute pointer-events-none'}`}>
+            <Account />
+          </div>
         </div>
 
         {/* Bottom Navigation - Premium iOS Style with Center Scan Button */}
@@ -201,10 +215,16 @@ function App() {
             }
 
             // Regular nav buttons
+            const handleTabClick = () => {
+              if (tab.id !== activeTab) {
+                setActiveTab(tab.id) // Switch immediately so data starts loading
+              }
+            }
+
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={handleTabClick}
                 className={`relative flex-1 py-2.5 flex flex-col items-center gap-1 transition-all duration-200 ${
                   isActive ? 'scale-105' : 'scale-100 active:scale-95'
                 }`}

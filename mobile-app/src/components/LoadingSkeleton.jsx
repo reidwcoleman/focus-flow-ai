@@ -5,13 +5,27 @@
 
 export const AssignmentSkeleton = () => (
   <div className="animate-pulse">
-    <div className="flex items-start gap-3 p-4 rounded-xl bg-dark-bg-secondary border border-dark-border-glow">
-      <div className="w-5 h-5 bg-dark-bg-tertiary rounded"></div>
-      <div className="flex-1 space-y-2">
-        <div className="h-4 bg-dark-bg-tertiary rounded w-3/4"></div>
+    <div className="relative overflow-hidden rounded-2xl bg-dark-bg-secondary border border-dark-border-glow p-5 shadow-dark-soft-md">
+      {/* Top badges area */}
+      <div className="flex justify-end gap-2 mb-3">
+        <div className="h-6 w-16 bg-dark-bg-tertiary/50 rounded-full"></div>
+        <div className="h-6 w-6 bg-dark-bg-tertiary/50 rounded-lg"></div>
+      </div>
+
+      {/* Main content */}
+      <div className="space-y-3">
+        <div className="h-6 bg-dark-bg-tertiary/60 rounded w-3/4"></div>
         <div className="flex gap-2">
-          <div className="h-3 bg-dark-bg-tertiary rounded w-20"></div>
-          <div className="h-3 bg-dark-bg-tertiary rounded w-16"></div>
+          <div className="h-4 bg-dark-bg-tertiary/50 rounded w-20"></div>
+          <div className="h-4 bg-dark-bg-tertiary/50 rounded w-24"></div>
+        </div>
+        <div className="h-3 bg-dark-bg-tertiary/40 rounded w-32"></div>
+      </div>
+
+      {/* Progress bar */}
+      <div className="mt-4">
+        <div className="h-2 bg-dark-bg-tertiary/30 rounded-full overflow-hidden">
+          <div className="h-full bg-dark-bg-tertiary/50 rounded-full w-1/3"></div>
         </div>
       </div>
     </div>

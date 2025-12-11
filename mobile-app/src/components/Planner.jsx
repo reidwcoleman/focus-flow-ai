@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef } from 'react'
 import calendarService from '../services/calendarService'
 import activityParserService from '../services/activityParserService'
+import { CalendarSkeleton, ActivitySkeleton, StatCardSkeleton } from './LoadingSkeleton'
 
 const Planner = () => {
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -258,8 +259,14 @@ const Planner = () => {
         </div>
 
         {/* Quick Stats */}
-        {activities.length > 0 && (
+        {loading ? (
           <div className="flex gap-2 mt-2">
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+          </div>
+        ) : activities.length > 0 && (
+          <div className="flex gap-2 mt-2 animate-fadeIn">
             <div className="flex-1 bg-dark-bg-secondary rounded-xl p-2.5 border border-dark-border-glow">
               <div className="text-xs text-dark-text-muted">Total Hours</div>
               <div className="text-lg font-bold text-dark-text-primary">{getTotalHours().toFixed(1)}h</div>
@@ -428,11 +435,14 @@ const Planner = () => {
 
       {/* Calendar View */}
       {viewMode === 'calendar' && (
-        <div
-          className="bg-dark-bg-secondary rounded-2xl p-4 border border-dark-border-glow shadow-dark-soft-md"
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-        >
+        loading ? (
+          <CalendarSkeleton />
+        ) : (
+          <div
+            className="bg-dark-bg-secondary rounded-2xl p-4 border border-dark-border-glow shadow-dark-soft-md animate-fadeIn"
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-dark-text-primary">
               {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
@@ -514,12 +524,23 @@ const Planner = () => {
               )
             })}
           </div>
-        </div>
+          </div>
+        )
       )}
 
       {/* Upcoming List View */}
       {viewMode === 'upcoming' && (
-        <div className="bg-dark-bg-secondary rounded-2xl p-4 border border-dark-border-glow shadow-dark-soft-md">
+        loading ? (
+          <div className="bg-dark-bg-secondary rounded-2xl p-4 border border-dark-border-glow shadow-dark-soft-md">
+            <div className="h-5 bg-dark-bg-tertiary rounded w-24 mb-3 animate-pulse"></div>
+            <div className="space-y-3">
+              <ActivitySkeleton />
+              <ActivitySkeleton />
+              <ActivitySkeleton />
+            </div>
+          </div>
+        ) : (
+          <div className="bg-dark-bg-secondary rounded-2xl p-4 border border-dark-border-glow shadow-dark-soft-md animate-fadeIn">
           <h3 className="text-base font-bold text-dark-text-primary mb-3">Next 7 Days</h3>
 
           {getFilteredActivities(getUpcomingActivities()).length === 0 ? (
@@ -632,12 +653,22 @@ const Planner = () => {
               })}
             </div>
           )}
-        </div>
+          </div>
+        )
       )}
 
       {/* Selected Day Activities (only shown in calendar mode) */}
       {viewMode === 'calendar' && (
-        <div className="bg-dark-bg-secondary rounded-2xl p-4 border border-dark-border-glow shadow-dark-soft-md">
+        loading ? (
+          <div className="bg-dark-bg-secondary rounded-2xl p-4 border border-dark-border-glow shadow-dark-soft-md">
+            <div className="h-5 bg-dark-bg-tertiary rounded w-48 mb-3 animate-pulse"></div>
+            <div className="space-y-2.5">
+              <ActivitySkeleton />
+              <ActivitySkeleton />
+            </div>
+          </div>
+        ) : (
+          <div className="bg-dark-bg-secondary rounded-2xl p-4 border border-dark-border-glow shadow-dark-soft-md animate-fadeIn">
           <h3 className="text-base font-bold text-dark-text-primary mb-3">
             {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
           </h3>
@@ -735,7 +766,8 @@ const Planner = () => {
               ))}
             </div>
           )}
-        </div>
+          </div>
+        )
       )}
     </div>
   )

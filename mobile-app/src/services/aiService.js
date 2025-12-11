@@ -69,36 +69,44 @@ When students ask:
 
     let contextPrompt = this.baseSystemPrompt + '\n\n**STUDENT CONTEXT:**\n'
 
+    // Add student stats summary
+    if (this.userContext.stats) {
+      const s = this.userContext.stats
+      contextPrompt += `\n📊 STUDENT OVERVIEW:\n`
+      contextPrompt += `- Current Study Streak: ${s.currentStreak} day${s.currentStreak !== 1 ? 's' : ''} (Best: ${s.longestStreak})\n`
+      contextPrompt += `- Assignments: ${s.totalAssignments} total (${s.pendingAssignments} pending, ${s.completedAssignments} done${s.overdueAssignments > 0 ? `, ${s.overdueAssignments} overdue` : ''})\n`
+      contextPrompt += `- Study Hours This Week: ${s.studyHoursThisWeek} hours\n`
+      contextPrompt += `- Active Subjects: ${s.activeSubjects.length > 0 ? s.activeSubjects.join(', ') : 'None'}\n`
+      contextPrompt += `- Study Resources: ${s.totalNotes} notes, ${s.totalDecks} flashcard decks\n`
+      contextPrompt += `- Upcoming Events (Next 7 Days): ${s.upcomingEventsCount}\n`
+    }
+
     // Add upcoming assignments (Dashboard - tasks to complete)
-    if (this.userContext.assignments && this.userContext.assignments.length > 0) {
-      contextPrompt += `\n📚 ASSIGNMENTS (Dashboard/Homepage - Tasks to Complete):\n`
-      this.userContext.assignments.slice(0, 5).forEach(assignment => {
+    if (this.userContext.upcoming?.assignments && this.userContext.upcoming.assignments.length > 0) {
+      contextPrompt += `\n📚 UPCOMING ASSIGNMENTS (Next to Work On):\n`
+      this.userContext.upcoming.assignments.forEach(assignment => {
         const dueDate = assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : 'No due date'
-        const status = assignment.completed ? '✓ Complete' : `${assignment.progress || 0}% done`
-        contextPrompt += `- ${assignment.title} (${assignment.subject}) - Due: ${dueDate} - ${status}\n`
+        const priority = assignment.priority ? `[${assignment.priority.toUpperCase()}]` : ''
+        const estimate = assignment.timeEstimate ? `~${assignment.timeEstimate}` : ''
+        contextPrompt += `- ${priority} ${assignment.title} (${assignment.subject || 'General'}) - Due: ${dueDate} ${estimate}\n`
       })
-      if (this.userContext.assignments.length > 5) {
-        contextPrompt += `... and ${this.userContext.assignments.length - 5} more assignments\n`
-      }
     } else {
-      contextPrompt += `\n📚 ASSIGNMENTS (Dashboard/Homepage): No assignments yet\n`
+      contextPrompt += `\n📚 UPCOMING ASSIGNMENTS: All caught up! 🎉\n`
     }
 
     // Add calendar/schedule for next week (Planning tab - time-blocked events)
-    if (this.userContext.calendar && this.userContext.calendar.length > 0) {
-      contextPrompt += `\n📅 CALENDAR/PLANNING (Planning Tab - Schedule & Events):\n`
-      this.userContext.calendar.slice(0, 10).forEach(activity => {
+    if (this.userContext.upcoming?.events && this.userContext.upcoming.events.length > 0) {
+      contextPrompt += `\n📅 UPCOMING SCHEDULE (Next 7 Days):\n`
+      this.userContext.upcoming.events.forEach(activity => {
         const date = new Date(activity.activity_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-        const time = activity.start_time ? `at ${activity.start_time}` : ''
-        const duration = activity.duration_minutes ? `(${activity.duration_minutes}min)` : ''
-        const type = activity.activity_type || 'activity'
-        contextPrompt += `- ${date} ${time}: ${activity.title} ${duration} [${type}]\n`
+        const time = activity.start_time ? activity.start_time.slice(0, 5) : 'No time'
+        const duration = activity.duration_minutes ? `${activity.duration_minutes}min` : ''
+        const type = activity.activity_type || 'event'
+        const subject = activity.subject ? `(${activity.subject})` : ''
+        contextPrompt += `- ${date} at ${time}: ${activity.title} ${subject} - ${duration} [${type}]\n`
       })
-      if (this.userContext.calendar.length > 10) {
-        contextPrompt += `... and ${this.userContext.calendar.length - 10} more activities\n`
-      }
     } else {
-      contextPrompt += `\n📅 CALENDAR/PLANNING (Planning Tab): No scheduled activities\n`
+      contextPrompt += `\n📅 UPCOMING SCHEDULE: No scheduled activities in the next 7 days\n`
     }
 
     // Add grades/classes info
@@ -188,15 +196,77 @@ When students ask:
         }
       }
 
-      // TODO: Load grades from Canvas when available
+      // Load grades from Canvas when available
       const grades = []
 
+      // Get study streak information
+      const profile = authService.getUserProfile()
+      const streak = {
+        current: profile?.current_streak || 0,
+        longest: profile?.longest_streak || 0
+      }
+
+      // Calculate completed vs pending assignments
+      const completedCount = assignments.filter(a => a.completed).length
+      const pendingCount = assignments.filter(a => !a.completed).length
+      const overdueCount = assignments.filter(a => {
+        if (a.completed) return false
+        if (!a.dueDate) return false
+        return new Date(a.dueDate) < new Date()
+      }).length
+
+      // Get upcoming calendar events (next 7 days)
+      const weekFromNow = new Date()
+      weekFromNow.setDate(weekFromNow.getDate() + 7)
+      const upcomingEvents = calendarData.filter(event => {
+        const eventDate = new Date(event.activity_date)
+        return eventDate >= today && eventDate <= weekFromNow
+      })
+
+      // Calculate total study hours this week
+      const weekStart = new Date()
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay())
+      const studyHoursThisWeek = calendarData
+        .filter(a => {
+          const aDate = new Date(a.activity_date)
+          return aDate >= weekStart && a.activity_type === 'study'
+        })
+        .reduce((sum, a) => sum + (a.duration_minutes || 0), 0) / 60
+
+      // Get subjects from assignments and activities
+      const allSubjects = new Set([
+        ...assignments.map(a => a.subject).filter(Boolean),
+        ...calendarData.map(a => a.subject).filter(Boolean)
+      ])
+
       this.userContext = {
+        // Core data
         assignments: assignments || [],
         calendar: calendarData || [],
         notes: notes || [],
         decks: decks || [],
         grades,
+
+        // Analytics & Stats
+        stats: {
+          totalAssignments: assignments.length,
+          completedAssignments: completedCount,
+          pendingAssignments: pendingCount,
+          overdueAssignments: overdueCount,
+          totalNotes: notes?.length || 0,
+          totalDecks: decks?.length || 0,
+          currentStreak: streak.current,
+          longestStreak: streak.longest,
+          studyHoursThisWeek: Math.round(studyHoursThisWeek * 10) / 10,
+          upcomingEventsCount: upcomingEvents.length,
+          activeSubjects: Array.from(allSubjects)
+        },
+
+        // Upcoming items (next 7 days)
+        upcoming: {
+          assignments: assignments.filter(a => !a.completed).slice(0, 5),
+          events: upcomingEvents.slice(0, 10)
+        }
       }
     } catch (error) {
       console.error('Failed to load user context:', error)
