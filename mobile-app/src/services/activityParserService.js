@@ -22,6 +22,7 @@ const getActivityParserPrompt = () => {
   const currentTime = now.toTimeString().slice(0, 5)
   const currentDay = now.getDate()
   const currentMonth = now.getMonth() + 1
+  const currentDayOfWeek = now.getDay() // 0 = Sunday, 1 = Monday, etc.
 
   // Calculate tomorrow using local timezone
   const tomorrowDate = new Date(now)
@@ -31,38 +32,64 @@ const getActivityParserPrompt = () => {
   const tomorrowYear = tomorrowDate.getFullYear()
   const tomorrowStr = `${tomorrowYear}-${String(tomorrowMonth).padStart(2, '0')}-${String(tomorrowDay).padStart(2, '0')}`
 
+  // Calculate next occurrence of each day of week for examples
+  const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  const nextDayOccurrences = daysOfWeek.map((dayName, targetDay) => {
+    const daysUntil = (targetDay - currentDayOfWeek + 7) % 7 || 7 // Always future, never today
+    const nextDate = new Date(now)
+    nextDate.setDate(now.getDate() + daysUntil)
+    return {
+      name: dayName,
+      date: `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`,
+      day: nextDate.getDate()
+    }
+  })
+
+  const nextMonday = nextDayOccurrences[1]
+  const nextFriday = nextDayOccurrences[5]
+
   return `You are an ULTRA-SMART AI calendar assistant with advanced natural language understanding. Parse activity descriptions into structured calendar events with MAXIMUM INTELLIGENCE about dates, times, and context.
 
 === CURRENT CONTEXT ===
 Today: ${today} (${dayOfWeek}) - Day ${currentDay} of month ${currentMonth}
 Tomorrow: ${tomorrowStr} - Day ${tomorrowDay}
 Current Time: ${currentTime}
+Current Day of Week: ${dayOfWeek} (${currentDayOfWeek})
 
 === DATE PARSING RULES (CRITICAL - READ CAREFULLY) ===
 
-**ABSOLUTE DATES TAKE PRIORITY OVER RELATIVE DATES:**
+**PRIORITY 1: ABSOLUTE DATES (ALWAYS USE THESE FIRST):**
 - If user mentions a SPECIFIC DATE NUMBER (like "on the 17th", "Dec 25", "12/17"), USE THAT DATE
 - If user says "tomorrow on the 17th" and today is the ${currentDay}, they mean the 17th (NOT ${tomorrowDay})
 - If user says "math test on the 17th", use 2025-12-17 (current year, current/next month)
 - If the day number is LESS than today's day (${currentDay}), assume NEXT month
 - If the day number is GREATER than today's day, assume THIS month
+- Examples:
+  * "on the 17th" → 2025-12-17 (explicit date)
+  * "tomorrow on the 17th" → 2025-12-17 (explicit overrides relative)
+  * "math test on the 25th" → 2025-12-25 (25 > ${currentDay} = this month)
 
-**RELATIVE DATES (only when NO specific date number mentioned):**
+**PRIORITY 2: DAY OF WEEK REFERENCES (when no specific date number):**
+Today is ${dayOfWeek}. Calculate NEXT occurrence of each weekday:
+- "Monday" or "this Monday" → ${nextMonday.date} (next Monday is day ${nextMonday.day})
+- "Friday" or "this Friday" → ${nextFriday.date} (next Friday is day ${nextFriday.day})
+- "next Monday" → one week AFTER ${nextMonday.date}
+- IMPORTANT: Always find the NEXT future occurrence of the day (never today, always future)
+- If user says "Friday" and today is ${dayOfWeek}, use ${nextFriday.date}
+
+**PRIORITY 3: RELATIVE DATES (lowest priority):**
 - "today" = ${today}
 - "tomorrow" = ${tomorrowStr}
-- "Monday", "Tuesday", etc. = NEXT occurrence of that day
-- "next Monday" = the Monday of NEXT week (not this week)
-- "this Friday" = the Friday of THIS week
 - "in 3 days" = calculate from ${today}
 - "next week" = 7 days from ${today}
 
-**EXAMPLES OF CORRECT DATE PARSING:**
-- Today is ${today} (day ${currentDay})
-- "tomorrow" → ${tomorrowStr}
-- "on the 17th" → 2025-12-17 (explicit date takes priority)
-- "tomorrow on the 17th" → 2025-12-17 (explicit date overrides "tomorrow")
-- "math test on the 25th" → 2025-12-25 (this month since 25 > ${currentDay})
-- If today were Dec 28: "on the 5th" → 2026-01-05 (next month since 5 < 28)
+**CRITICAL EXAMPLES:**
+Current date: ${today} (${dayOfWeek})
+- "study on Monday" → ${nextMonday.date} (next Monday)
+- "Friday quiz" → ${nextFriday.date} (next Friday)
+- "math test on the 17th" → 2025-12-17 (explicit date wins)
+- "chemistry tomorrow" → ${tomorrowStr}
+- "Monday on the 15th" → 2025-12-15 (explicit date wins)
 
 **TIMES - Parse ALL formats:**
 - "3pm", "3:30pm" = 15:00:00, 15:30:00
@@ -141,6 +168,15 @@ Output: {"title":"Basketball Practice","activity_date":"${tomorrowStr}","start_t
 
 Input: "study session for history exam on December 18th at 9am"
 Output: {"title":"Study for History Exam","activity_date":"2025-12-18","start_time":"09:00:00","duration_minutes":120,"activity_type":"study","subject":"History","location":null,"is_all_day":false}
+
+Input: "English class on Monday morning"
+Output: {"title":"English Class","activity_date":"${nextMonday.date}","start_time":"09:00:00","duration_minutes":60,"activity_type":"class","subject":"English","location":null,"is_all_day":false}
+
+Input: "quiz on Friday"
+Output: {"title":"Quiz","activity_date":"${nextFriday.date}","activity_type":"assignment","subject":null,"location":null,"is_all_day":false}
+
+Input: "team meeting this Wednesday at 2pm"
+Output: {"title":"Team Meeting","activity_date":"${nextDayOccurrences[3].date}","start_time":"14:00:00","duration_minutes":60,"activity_type":"meeting","subject":null,"location":null,"is_all_day":false}
 
 Input: "lunch break at noon for 30 minutes"
 Output: {"title":"Lunch Break","activity_date":"${today}","start_time":"12:00:00","end_time":"12:30:00","duration_minutes":30,"activity_type":"break","subject":null,"location":null,"is_all_day":false}
