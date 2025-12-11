@@ -14,6 +14,7 @@ const Dashboard = ({ onOpenScanner }) => {
   const [showStreakCalendar, setShowStreakCalendar] = useState(false)
   const [streak, setStreak] = useState({ currentStreak: 0, longestStreak: 0, isNewStreak: false })
   const [showStreakCelebration, setShowStreakCelebration] = useState(false)
+  const [flyingAwayItems, setFlyingAwayItems] = useState(new Set())
   const [newAssignment, setNewAssignment] = useState({
     title: '',
     subject: '',
@@ -133,18 +134,47 @@ const Dashboard = ({ onOpenScanner }) => {
 
   const handleToggleComplete = async (assignmentId, currentStatus) => {
     try {
-      const { error } = await assignmentsService.updateAssignment(assignmentId, {
-        completed: !currentStatus,
-        progress: !currentStatus ? 100 : 0
-      })
+      const newStatus = !currentStatus
 
-      if (error) throw error
+      // If marking as complete, trigger fly-away animation
+      if (newStatus) {
+        setFlyingAwayItems(prev => new Set([...prev, assignmentId]))
 
-      // Reload assignments
-      await loadAssignments()
+        // Wait for animation to complete
+        setTimeout(async () => {
+          // Update in database
+          await assignmentsService.updateAssignment(assignmentId, {
+            completed: true,
+            progress: 100
+          })
+
+          // Remove from UI
+          setAssignments(prev => prev.filter(a => a.id !== assignmentId))
+          setFlyingAwayItems(prev => {
+            const next = new Set(prev)
+            next.delete(assignmentId)
+            return next
+          })
+        }, 500)
+      } else {
+        // If unchecking, update immediately without animation
+        const { error } = await assignmentsService.updateAssignment(assignmentId, {
+          completed: false,
+          progress: 0
+        })
+
+        if (error) throw error
+
+        // Update local state optimistically
+        setAssignments(prev => prev.map(a =>
+          a.id === assignmentId ? { ...a, completed: false, progress: 0 } : a
+        ))
+      }
     } catch (error) {
       console.error('Failed to toggle completion:', error)
       alert('Failed to update assignment')
+      // Reload on error
+      await loadAssignments()
     }
   }
 
@@ -413,7 +443,11 @@ const Dashboard = ({ onOpenScanner }) => {
           {assignments.map((assignment) => (
             <div
               key={assignment.id}
-              className={`relative overflow-hidden rounded-2xl ${getSubjectBgColor(assignment.subject)} border border-dark-border-glow p-5 shadow-dark-soft-md hover:shadow-rim-light transition-all duration-200 active:scale-[0.99]`}
+              className={`relative overflow-hidden rounded-2xl ${getSubjectBgColor(assignment.subject)} border border-dark-border-glow p-5 shadow-dark-soft-md hover:shadow-rim-light transition-all duration-500 active:scale-[0.99] ${
+                flyingAwayItems.has(assignment.id)
+                  ? 'animate-fly-away opacity-0 scale-75 translate-x-full'
+                  : ''
+              }`}
             >
               {/* Badges and Actions */}
               <div className="absolute top-3.5 right-3.5 flex items-center gap-2">

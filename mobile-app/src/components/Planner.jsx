@@ -21,6 +21,7 @@ const Planner = () => {
   const [showExamples, setShowExamples] = useState(false)
   const [viewMode, setViewMode] = useState('calendar') // 'calendar' or 'upcoming'
   const [filterType, setFilterType] = useState('all') // 'all' or specific activity type
+  const [flyingAwayItems, setFlyingAwayItems] = useState(new Set())
   const touchStartX = useRef(0)
   const touchEndX = useRef(0)
 
@@ -95,10 +96,38 @@ const Planner = () => {
 
   const handleToggleComplete = async (id, currentStatus) => {
     try {
-      await calendarService.toggleCompletion(id, !currentStatus)
-      await loadActivities()
+      const newStatus = !currentStatus
+
+      // If marking as complete, trigger fly-away animation
+      if (newStatus) {
+        setFlyingAwayItems(prev => new Set([...prev, id]))
+
+        // Wait for animation to complete
+        setTimeout(async () => {
+          // Update in database
+          await calendarService.toggleCompletion(id, true)
+
+          // Remove from UI
+          setActivities(prev => prev.filter(a => a.id !== id))
+          setFlyingAwayItems(prev => {
+            const next = new Set(prev)
+            next.delete(id)
+            return next
+          })
+        }, 500)
+      } else {
+        // If unchecking, update immediately without animation
+        await calendarService.toggleCompletion(id, false)
+
+        // Update local state optimistically
+        setActivities(prev => prev.map(a =>
+          a.id === id ? { ...a, is_completed: false } : a
+        ))
+      }
     } catch (err) {
       console.error('Failed to toggle completion:', err)
+      // Reload on error
+      await loadActivities()
     }
   }
 
@@ -574,10 +603,14 @@ const Planner = () => {
                       </div>
                     )}
 
-                    <div className={`p-3 rounded-xl border transition-all ${
+                    <div className={`p-3 rounded-xl border transition-all duration-500 ${
                       activity.is_completed
                         ? 'bg-dark-bg-tertiary border-dark-border-subtle opacity-60'
                         : 'bg-dark-bg-tertiary border-dark-border-glow'
+                    } ${
+                      flyingAwayItems.has(activity.id)
+                        ? 'animate-fly-away opacity-0 scale-75 translate-x-full'
+                        : ''
                     }`}>
                       <div className="flex items-start gap-2.5">
                         <button
@@ -688,10 +721,14 @@ const Planner = () => {
               {getFilteredActivities(dayActivities).map((activity) => (
                 <div
                   key={activity.id}
-                  className={`p-3 rounded-xl border transition-all ${
+                  className={`p-3 rounded-xl border transition-all duration-500 ${
                     activity.is_completed
                       ? 'bg-dark-bg-tertiary border-dark-border-subtle opacity-60'
                       : 'bg-dark-bg-tertiary border-dark-border-glow'
+                  } ${
+                    flyingAwayItems.has(activity.id)
+                      ? 'animate-fly-away opacity-0 scale-75 translate-x-full'
+                      : ''
                   }`}
                 >
                   <div className="flex items-start gap-2.5">

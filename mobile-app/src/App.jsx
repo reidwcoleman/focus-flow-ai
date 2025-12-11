@@ -11,6 +11,7 @@ import Account from './components/Account'
 import AuthScreen from './components/AuthScreen'
 import { StudyProvider } from './contexts/StudyContext'
 import authService from './services/authService'
+import streakService from './services/streakService'
 import './App.css'
 
 function App() {
@@ -27,6 +28,11 @@ function App() {
       const { user } = await authService.getCurrentUser()
       setUser(user)
       setAuthLoading(false)
+
+      // Check and update streak on login
+      if (user) {
+        await streakService.checkAndUpdateStreak(user.id)
+      }
     }
 
     checkAuth()
@@ -34,12 +40,50 @@ function App() {
     // Listen for auth state changes
     const subscription = authService.onAuthStateChange((event, session) => {
       setUser(session?.user || null)
+
+      // Update streak when user signs in
+      if (session?.user) {
+        streakService.checkAndUpdateStreak(session.user.id)
+      }
     })
 
     return () => {
       subscription.unsubscribe()
     }
   }, [])
+
+  // Check streak when app becomes visible again (user returns to tab)
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (!document.hidden && user) {
+        console.log('👁️ App became visible, checking streak...')
+        await streakService.checkAndUpdateStreak(user.id)
+        // Refresh dashboard to show updated streak
+        setDashboardKey(prev => prev + 1)
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [user])
+
+  // Periodic streak check (every 5 minutes) to catch day changes
+  useEffect(() => {
+    if (!user) return
+
+    const checkStreakPeriodically = async () => {
+      await streakService.checkAndUpdateStreak(user.id)
+      setDashboardKey(prev => prev + 1)
+    }
+
+    // Check every 5 minutes
+    const interval = setInterval(checkStreakPeriodically, 5 * 60 * 1000)
+
+    return () => clearInterval(interval)
+  }, [user])
 
   const tabs = [
     { id: 'dashboard', label: 'Home', icon: 'home' },

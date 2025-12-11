@@ -213,6 +213,42 @@ CREATE TRIGGER blocking_sessions_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_blocking_sessions_updated_at();
 
+-- 6. Create study_sessions table for analytics
+CREATE TABLE IF NOT EXISTS study_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  subject TEXT,
+  duration_minutes INTEGER NOT NULL,
+  focus_score INTEGER CHECK (focus_score >= 0 AND focus_score <= 100),
+  session_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  session_start TIMESTAMP WITH TIME ZONE,
+  session_end TIMESTAMP WITH TIME ZONE,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_study_sessions_user_id ON study_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_study_sessions_date ON study_sessions(session_date);
+CREATE INDEX IF NOT EXISTS idx_study_sessions_user_date ON study_sessions(user_id, session_date);
+
+ALTER TABLE study_sessions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own study sessions"
+  ON study_sessions FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own study sessions"
+  ON study_sessions FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own study sessions"
+  ON study_sessions FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own study sessions"
+  ON study_sessions FOR DELETE
+  USING (auth.uid() = user_id);
+
 -- Done! All tables and features should now be created.
 
 -- Streak History Table

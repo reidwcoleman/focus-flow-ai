@@ -2,3 +2,23 @@
   width: 100%;
   min-height: 100vh;
 }
+
+/* Fly-away animation for completed items */
+@keyframes fly-away {
+  0% {
+    opacity: 1;
+    transform: translateX(0) translateY(0) scale(1) rotate(0deg);
+  }
+  40% {
+    opacity: 0.7;
+    transform: translateX(20px) translateY(-10px) scale(0.95) rotate(3deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(100%) translateY(-30px) scale(0.7) rotate(8deg);
+  }
+}
+
+.animate-fly-away {
+  animation: fly-away 0.5s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+}
