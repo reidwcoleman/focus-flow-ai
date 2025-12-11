@@ -6,6 +6,7 @@ import Analytics from './components/Analytics'
 import Settings from './components/Settings'
 import Scanner from './components/Scanner'
 import StudyHub from './components/StudyHub'
+import FocusMode from './components/FocusMode'
 import Account from './components/Account'
 import AuthScreen from './components/AuthScreen'
 import { StudyProvider } from './contexts/StudyContext'
@@ -45,6 +46,7 @@ function App() {
     { id: 'planner', label: 'Plan', icon: 'calendar' },
     { id: 'study', label: 'Study', icon: 'book' },
     { id: 'scan', label: 'Scan', icon: 'camera', isCenter: true },
+    { id: 'focus', label: 'Focus', icon: 'target' },
     { id: 'tutor', label: 'AI', icon: 'sparkles' },
     { id: 'analytics', label: 'Stats', icon: 'chart' },
     { id: 'account', label: 'Account', icon: 'user' },
@@ -111,6 +113,12 @@ function App() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
         )
+      case 'target':
+        return (
+          <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        )
       default:
         return null
     }
@@ -154,13 +162,14 @@ function App() {
           {activeTab === 'tutor' && <AITutor />}
           {activeTab === 'analytics' && <Analytics />}
           {activeTab === 'study' && <StudyHub />}
+          {activeTab === 'focus' && <FocusMode />}
           {activeTab === 'account' && <Account />}
         </div>
 
-      {/* Bottom Navigation - Premium iOS Style with Center Scan Button */}
-      <div className="fixed bottom-0 left-0 right-0 flex justify-center">
-        <nav className="max-w-md w-full bg-dark-bg-secondary border-t border-dark-border-glow safe-area-inset-bottom shadow-dark-soft-lg backdrop-blur-xl">
-          <div className="flex justify-around items-end px-1 relative">
+        {/* Bottom Navigation - Premium iOS Style with Center Scan Button */}
+        <div className="fixed bottom-0 left-0 right-0 flex justify-center">
+          <nav className="max-w-md w-full bg-dark-bg-secondary border-t border-dark-border-glow safe-area-inset-bottom shadow-dark-soft-lg backdrop-blur-xl">
+            <div className="flex justify-around items-end px-1 relative">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id
             const isCenter = tab.isCenter
@@ -230,9 +239,9 @@ function App() {
               </button>
             )
           })}
-          </div>
-        </nav>
-      </div>
+            </div>
+          </nav>
+        </div>
       </div>
     </StudyProvider>
   )

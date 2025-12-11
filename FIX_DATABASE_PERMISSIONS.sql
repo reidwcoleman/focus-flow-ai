@@ -111,7 +111,55 @@ CREATE POLICY "Users can delete own activities"
   USING (auth.uid() = user_id);
 
 -- ========================================
--- 3. CREATE TRIGGERS
+-- 3. CREATE BLOCKING_SESSIONS TABLE (Focus Mode)
+-- ========================================
+
+CREATE TABLE IF NOT EXISTS blocking_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  blocked_apps TEXT[] NOT NULL,
+  start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+  end_time TIMESTAMP WITH TIME ZONE NOT NULL,
+  actual_end_time TIMESTAMP WITH TIME ZONE,
+  duration_minutes INTEGER NOT NULL,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_blocking_sessions_user_id ON blocking_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_blocking_sessions_active ON blocking_sessions(user_id, is_active);
+CREATE INDEX IF NOT EXISTS idx_blocking_sessions_end_time ON blocking_sessions(end_time);
+
+-- Enable RLS
+ALTER TABLE blocking_sessions ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can view own blocking sessions" ON blocking_sessions;
+DROP POLICY IF EXISTS "Users can insert own blocking sessions" ON blocking_sessions;
+DROP POLICY IF EXISTS "Users can update own blocking sessions" ON blocking_sessions;
+DROP POLICY IF EXISTS "Users can delete own blocking sessions" ON blocking_sessions;
+
+-- Create RLS policies
+CREATE POLICY "Users can view own blocking sessions"
+  ON blocking_sessions FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own blocking sessions"
+  ON blocking_sessions FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own blocking sessions"
+  ON blocking_sessions FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own blocking sessions"
+  ON blocking_sessions FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- ========================================
+-- 4. CREATE TRIGGERS
 -- ========================================
 
 -- Assignments updated_at trigger
@@ -144,8 +192,23 @@ CREATE TRIGGER calendar_activities_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_calendar_activities_updated_at();
 
+-- Blocking sessions updated_at trigger
+CREATE OR REPLACE FUNCTION update_blocking_sessions_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS blocking_sessions_updated_at ON blocking_sessions;
+CREATE TRIGGER blocking_sessions_updated_at
+  BEFORE UPDATE ON blocking_sessions
+  FOR EACH ROW
+  EXECUTE FUNCTION update_blocking_sessions_updated_at();
+
 -- ========================================
--- 4. VERIFICATION
+-- 5. VERIFICATION
 -- ========================================
 
 -- Run these queries to verify everything worked:
@@ -156,15 +219,21 @@ SELECT COUNT(*) as assignment_count FROM assignments;
 -- Check calendar_activities table
 SELECT COUNT(*) as activity_count FROM calendar_activities;
 
+-- Check blocking_sessions table
+SELECT COUNT(*) as blocking_session_count FROM blocking_sessions;
+
 -- Check RLS is enabled
 SELECT tablename, rowsecurity
 FROM pg_tables
 WHERE schemaname = 'public'
-AND tablename IN ('assignments', 'calendar_activities');
+AND tablename IN ('assignments', 'calendar_activities', 'blocking_sessions');
 
 -- ========================================
 -- SUCCESS!
 -- ========================================
--- If no errors, both tables are created with proper RLS policies.
--- You can now use homework scanning and AI calendar features!
+-- If no errors, all tables are created with proper RLS policies.
+-- You can now use:
+-- - Homework scanning
+-- - AI calendar features
+-- - Focus Mode app blocking
 -- ========================================
