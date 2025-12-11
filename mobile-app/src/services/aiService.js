@@ -483,8 +483,10 @@ When students ask:
 
   /**
    * Send message directly to Groq (LOCAL DEV ONLY - NOT SECURE FOR PRODUCTION)
+   * @param {string} userMessage - The user's text message
+   * @param {string} imageData - Optional base64 image data
    */
-  async sendDirectToGroq(userMessage) {
+  async sendDirectToGroq(userMessage, imageData = null) {
     if (!AI_CONFIG.groqApiKey) {
       throw new Error('Groq API key not configured')
     }
@@ -494,17 +496,40 @@ When students ask:
       await this.loadUserContext()
     }
 
-    // Add user message to history
+    // Build user message content
+    let userContent = userMessage
+    if (imageData) {
+      // For vision requests, use multimodal format
+      const base64Image = imageData.replace(/^data:image\/\w+;base64,/, '')
+      userContent = [
+        { type: 'text', text: userMessage || 'Analyze this image and help me solve any problems or answer questions about it.' },
+        { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64Image}` } }
+      ]
+    }
+
+    // Add user message to history (text only for history)
     this.conversationHistory.push({
       role: 'user',
-      content: userMessage,
+      content: userMessage || '📷 [Image]',
     })
 
     try {
+      // Build messages array
+      const conversationMessages = this.conversationHistory.slice(-10).map((msg, idx) => {
+        // Only apply image to the last user message
+        if (idx === this.conversationHistory.slice(-10).length - 1 && msg.role === 'user' && imageData) {
+          return { role: msg.role, content: userContent }
+        }
+        return { role: msg.role, content: msg.content }
+      })
+
       const messages = [
         { role: 'system', content: this.getSystemPrompt() },
-        ...this.conversationHistory.slice(-10),
+        ...conversationMessages,
       ]
+
+      // Use vision model if image is provided
+      const modelToUse = imageData ? 'llama-3.2-90b-vision-preview' : 'llama-3.3-70b-versatile'
 
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
@@ -513,10 +538,10 @@ When students ask:
           'Authorization': `Bearer ${AI_CONFIG.groqApiKey}`,
         },
         body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
+          model: modelToUse,
           messages: messages,
           temperature: 0.7,
-          max_tokens: 300, // Reduced for mobile-optimized concise responses
+          max_tokens: imageData ? 500 : 300, // More tokens for vision responses
           top_p: 1,
         }),
       })
@@ -562,12 +587,12 @@ When students ask:
 
     // Use backend if configured (recommended)
     if (AI_CONFIG.edgeFunctionUrl && !AI_CONFIG.useDirectApi) {
-      return await this.sendViaBackend(userMessage)
+      return await this.sendViaBackend(userMessage, imageData)
     }
 
     // Fallback to direct API (local dev only)
     if (AI_CONFIG.useDirectApi && AI_CONFIG.groqApiKey) {
-      return await this.sendDirectToGroq(userMessage)
+      return await this.sendDirectToGroq(userMessage, imageData)
     }
 
     throw new Error('No AI service configured')
