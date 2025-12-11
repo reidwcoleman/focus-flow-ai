@@ -91,6 +91,9 @@ class StreakService {
 
       if (updateError) throw updateError
 
+      // Log today's login to streak_history
+      await this.logLogin(userId, today)
+
       console.log('🔥 Streak updated:', {
         current: newStreak,
         longest: newLongestStreak,
@@ -140,6 +143,66 @@ class StreakService {
         longestStreak: 0,
         lastLoginDate: null,
       }
+    }
+  }
+
+  /**
+   * Log today's login to streak_history
+   * @param {string} userId - User ID
+   * @param {string} date - Date string (YYYY-MM-DD)
+   */
+  async logLogin(userId, date) {
+    try {
+      // Use upsert to avoid duplicate entries
+      const { error } = await supabase
+        .from('streak_history')
+        .upsert(
+          {
+            user_id: userId,
+            login_date: date,
+            created_at: new Date().toISOString(),
+          },
+          {
+            onConflict: 'user_id,login_date',
+            ignoreDuplicates: true,
+          }
+        )
+
+      if (error && error.code !== '23505') {
+        // Ignore unique constraint violations (23505)
+        console.error('Failed to log login:', error)
+      }
+    } catch (error) {
+      console.error('Failed to log login:', error)
+    }
+  }
+
+  /**
+   * Get streak history for a user (last 90 days)
+   * @param {string} userId - User ID
+   * @returns {Promise<Array>} Array of login dates
+   */
+  async getStreakHistory(userId) {
+    try {
+      // Get last 90 days of history
+      const ninetyDaysAgo = new Date()
+      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
+      const startDate = ninetyDaysAgo.toISOString().split('T')[0]
+
+      const { data, error } = await supabase
+        .from('streak_history')
+        .select('login_date')
+        .eq('user_id', userId)
+        .gte('login_date', startDate)
+        .order('login_date', { ascending: true })
+
+      if (error) throw error
+
+      // Return array of date strings
+      return data.map(row => row.login_date)
+    } catch (error) {
+      console.error('Failed to get streak history:', error)
+      return []
     }
   }
 }

@@ -154,7 +154,7 @@ When students ask:
       const nextMonth = new Date(today)
       nextMonth.setDate(today.getDate() + 30)
 
-      const { data: calendarData } = await calendarService.getActivitiesByDateRange(
+      const calendarData = await calendarService.getActivitiesByDateRange(
         today.toISOString().split('T')[0],
         nextMonth.toISOString().split('T')[0]
       )

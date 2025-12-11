@@ -3,6 +3,7 @@ import canvasService from '../services/canvasService'
 import authService from '../services/authService'
 import assignmentsService from '../services/assignmentsService'
 import streakService from '../services/streakService'
+import StreakCalendar from './StreakCalendar'
 
 const Dashboard = ({ onOpenScanner }) => {
   const [userName, setUserName] = useState('there')
@@ -10,6 +11,7 @@ const Dashboard = ({ onOpenScanner }) => {
   const [isLoadingCanvas, setIsLoadingCanvas] = useState(false)
   const [isLoadingAssignments, setIsLoadingAssignments] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showStreakCalendar, setShowStreakCalendar] = useState(false)
   const [streak, setStreak] = useState({ currentStreak: 0, longestStreak: 0, isNewStreak: false })
   const [showStreakCelebration, setShowStreakCelebration] = useState(false)
   const [newAssignment, setNewAssignment] = useState({
@@ -268,8 +270,11 @@ const Dashboard = ({ onOpenScanner }) => {
         <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-dark-navy-dark/50 rounded-full blur-3xl pointer-events-none"></div>
       </div>
 
-      {/* Streak Display */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-500/10 via-red-500/10 to-yellow-500/10 p-6 shadow-dark-soft-lg border border-orange-500/30">
+      {/* Streak Display - Clickable */}
+      <button
+        onClick={() => setShowStreakCalendar(true)}
+        className="w-full relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-500/10 via-red-500/10 to-yellow-500/10 p-6 shadow-dark-soft-lg border border-orange-500/30 hover:shadow-glow-orange transition-all active:scale-[0.98] text-left"
+      >
         {/* Celebration overlay */}
         {showStreakCelebration && (
           <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 via-yellow-500/20 to-orange-500/20 animate-pulse-soft pointer-events-none"></div>
@@ -335,7 +340,16 @@ const Dashboard = ({ onOpenScanner }) => {
         <div className="absolute bottom-0 right-0 w-32 h-32 opacity-10 pointer-events-none">
           <div className="text-8xl">🔥</div>
         </div>
-      </div>
+
+        {/* Tap hint */}
+        <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2 py-1 rounded-lg bg-dark-bg-tertiary/70 backdrop-blur-sm border border-orange-500/30">
+          <svg className="w-3 h-3 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+          <span className="text-[10px] font-semibold text-orange-300">Tap to view calendar</span>
+        </div>
+      </button>
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 gap-3">
@@ -615,6 +629,15 @@ const Dashboard = ({ onOpenScanner }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Streak Calendar Modal */}
+      {showStreakCalendar && (
+        <StreakCalendar
+          onClose={() => setShowStreakCalendar(false)}
+          currentStreak={streak.currentStreak}
+          longestStreak={streak.longestStreak}
+        />
       )}
     </div>
   )
