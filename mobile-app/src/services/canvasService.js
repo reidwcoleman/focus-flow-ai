@@ -1,40 +1,60 @@
 // Canvas LMS API Integration Service
+import supabase from '../lib/supabase'
+import authService from './authService'
+import assignmentsService from './assignmentsService'
 
 const CANVAS_CONFIG = {
-  // User will configure their institution's Canvas domain
-  baseUrl: localStorage.getItem('canvas_domain') || '',
-  accessToken: localStorage.getItem('canvas_token') || '',
+  baseUrl: '',
+  accessToken: '',
 }
 
 export const canvasService = {
-  // Set Canvas credentials
-  setCredentials(domain, token) {
-    // Ensure domain has proper format
-    const formattedDomain = domain.includes('http') ? domain : `https://${domain}`
-    localStorage.setItem('canvas_domain', formattedDomain)
-    localStorage.setItem('canvas_token', token)
-    CANVAS_CONFIG.baseUrl = formattedDomain
-    CANVAS_CONFIG.accessToken = token
+  // Initialize Canvas credentials from user profile
+  async initializeFromProfile() {
+    try {
+      const { user } = await authService.getCurrentUser()
+      if (!user) return false
+
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('canvas_url, canvas_token')
+        .eq('id', user.id)
+        .single()
+
+      if (profile?.canvas_url && profile?.canvas_token) {
+        const formattedUrl = profile.canvas_url.includes('http')
+          ? profile.canvas_url
+          : `https://${profile.canvas_url}`
+        CANVAS_CONFIG.baseUrl = formattedUrl
+        CANVAS_CONFIG.accessToken = profile.canvas_token
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error('Failed to initialize Canvas from profile:', error)
+      return false
+    }
   },
 
   // Check if Canvas is connected
-  isConnected() {
+  async isConnected() {
+    if (!CANVAS_CONFIG.baseUrl || !CANVAS_CONFIG.accessToken) {
+      await this.initializeFromProfile()
+    }
     return !!(CANVAS_CONFIG.baseUrl && CANVAS_CONFIG.accessToken)
   },
 
-  // Disconnect Canvas
-  disconnect() {
-    localStorage.removeItem('canvas_domain')
-    localStorage.removeItem('canvas_token')
-    localStorage.removeItem('canvas_demo_mode')
+  // Clear Canvas credentials
+  clearCredentials() {
     CANVAS_CONFIG.baseUrl = ''
     CANVAS_CONFIG.accessToken = ''
   },
 
   // Make authenticated API request to Canvas
   async makeRequest(endpoint, options = {}) {
-    if (!this.isConnected()) {
-      throw new Error('Canvas not connected')
+    const connected = await this.isConnected()
+    if (!connected) {
+      throw new Error('Canvas not connected. Please configure Canvas in Account settings.')
     }
 
     const url = `${CANVAS_CONFIG.baseUrl}/api/v1${endpoint}`
@@ -52,7 +72,7 @@ export const canvasService = {
 
       if (!response.ok) {
         if (response.status === 401) {
-          throw new Error('Invalid access token. Please check your Canvas token.')
+          throw new Error('Invalid Canvas token. Please check your token in Account settings.')
         }
         if (response.status === 403) {
           throw new Error('Access denied. Your token may not have the required permissions.')
@@ -66,133 +86,25 @@ export const canvasService = {
 
       // Check if it's a CORS error
       if (error.message.includes('CORS') || error.name === 'TypeError') {
-        throw new Error('CORS error: Canvas may be blocking browser requests. This is a browser security limitation. In production, use a backend proxy.')
+        throw new Error('CORS error: Canvas may be blocking requests. Try using your institution\'s Canvas URL (e.g., canvas.school.edu)')
       }
 
       throw error
     }
   },
 
-  // Enable demo mode with mock data
-  enableDemoMode() {
-    localStorage.setItem('canvas_demo_mode', 'true')
-    localStorage.setItem('canvas_domain', 'demo.instructure.com')
-    localStorage.setItem('canvas_token', 'demo_token_' + Date.now())
-    CANVAS_CONFIG.baseUrl = 'demo.instructure.com'
-    CANVAS_CONFIG.accessToken = 'demo_token_' + Date.now()
-  },
-
-  // Check if in demo mode
-  isDemoMode() {
-    return localStorage.getItem('canvas_demo_mode') === 'true'
-  },
-
   // Get current user info
   async getCurrentUser() {
-    if (this.isDemoMode()) {
-      return {
-        id: 12345,
-        name: 'Alex Student',
-        email: 'alex.student@school.edu',
-        login_id: 'astudent',
-        avatar_url: null,
-      }
-    }
     return await this.makeRequest('/users/self')
   },
 
   // Get all active courses
   async getCourses() {
-    if (this.isDemoMode()) {
-      return [
-        { id: 101, name: 'AP Chemistry', course_code: 'CHEM301' },
-        { id: 102, name: 'English Literature', course_code: 'ENG201' },
-        { id: 103, name: 'Calculus AB', course_code: 'MATH401' },
-        { id: 104, name: 'World History', course_code: 'HIST202' },
-        { id: 105, name: 'Physics', course_code: 'PHYS301' },
-      ]
-    }
     return await this.makeRequest('/courses?enrollment_state=active&per_page=100')
   },
 
   // Get assignments for all courses
   async getAllAssignments() {
-    if (this.isDemoMode()) {
-      const now = new Date()
-      return [
-        {
-          id: 'canvas-1001',
-          title: 'Acid-Base Titration Lab Report',
-          subject: 'AP Chemistry',
-          dueDate: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-          description: 'Complete lab report with calculations and error analysis',
-          points: 100,
-          submissionTypes: ['online_upload'],
-          htmlUrl: '#',
-          courseId: 101,
-          submitted: false,
-          graded: false,
-          source: 'canvas',
-        },
-        {
-          id: 'canvas-1002',
-          title: 'Shakespeare Essay: Macbeth Themes',
-          subject: 'English Literature',
-          dueDate: new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000).toISOString(),
-          description: 'Analyze three major themes in Macbeth (5 pages)',
-          points: 150,
-          submissionTypes: ['online_text_entry'],
-          htmlUrl: '#',
-          courseId: 102,
-          submitted: false,
-          graded: false,
-          source: 'canvas',
-        },
-        {
-          id: 'canvas-1003',
-          title: 'Integration Practice Problems',
-          subject: 'Calculus AB',
-          dueDate: new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000).toISOString(),
-          description: 'Complete problems 1-25 from Chapter 6',
-          points: 50,
-          submissionTypes: ['online_upload'],
-          htmlUrl: '#',
-          courseId: 103,
-          submitted: false,
-          graded: false,
-          source: 'canvas',
-        },
-        {
-          id: 'canvas-1004',
-          title: 'WWI Causes Research Paper',
-          subject: 'World History',
-          dueDate: new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000).toISOString(),
-          description: 'Research and analyze the causes of World War I',
-          points: 120,
-          submissionTypes: ['online_upload'],
-          htmlUrl: '#',
-          courseId: 104,
-          submitted: false,
-          graded: false,
-          source: 'canvas',
-        },
-        {
-          id: 'canvas-1005',
-          title: 'Newton\'s Laws Lab',
-          subject: 'Physics',
-          dueDate: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-          description: 'Complete lab on Newton\'s Laws of Motion',
-          points: 80,
-          submissionTypes: ['online_upload'],
-          htmlUrl: '#',
-          courseId: 105,
-          submitted: false,
-          graded: false,
-          source: 'canvas',
-        },
-      ]
-    }
-
     try {
       const courses = await this.getCourses()
       const allAssignments = []
@@ -235,16 +147,6 @@ export const canvasService = {
 
   // Get grades for all courses
   async getAllGrades() {
-    if (this.isDemoMode()) {
-      return [
-        { courseId: 101, courseName: 'AP Chemistry', currentGrade: 'A-', currentScore: 91.5, finalGrade: 'A-', finalScore: 91.5 },
-        { courseId: 102, courseName: 'English Literature', currentGrade: 'A', currentScore: 95.2, finalGrade: 'A', finalScore: 95.2 },
-        { courseId: 103, courseName: 'Calculus AB', currentGrade: 'B+', currentScore: 88.7, finalGrade: 'B+', finalScore: 88.7 },
-        { courseId: 104, courseName: 'World History', currentGrade: 'A-', currentScore: 90.1, finalGrade: 'A-', finalScore: 90.1 },
-        { courseId: 105, courseName: 'Physics', currentGrade: 'B', currentScore: 85.3, finalGrade: 'B', finalScore: 85.3 },
-      ]
-    }
-
     try {
       const courses = await this.getCourses()
       const grades = []
@@ -303,6 +205,97 @@ export const canvasService = {
         body: JSON.stringify({ submission }),
       }
     )
+  },
+
+  // Sync Canvas assignments to database
+  async syncToDatabase() {
+    try {
+      console.log('🔄 Starting Canvas sync...')
+
+      // Initialize connection
+      await this.initializeFromProfile()
+
+      // Fetch all assignments from Canvas
+      const canvasAssignments = await this.getAllAssignments()
+      console.log(`📥 Fetched ${canvasAssignments.length} assignments from Canvas`)
+
+      if (canvasAssignments.length === 0) {
+        return { success: true, synced: 0, message: 'No assignments found in Canvas' }
+      }
+
+      let syncedCount = 0
+      const errors = []
+
+      // Sync each assignment to database
+      for (const assignment of canvasAssignments) {
+        try {
+          // Transform to database format
+          const dbAssignment = {
+            title: assignment.title,
+            subject: assignment.subject,
+            dueDate: assignment.dueDate ? new Date(assignment.dueDate).toISOString().split('T')[0] : null,
+            description: assignment.description || null,
+            priority: this.calculatePriority(assignment.dueDate),
+            source: 'canvas',
+            aiCaptured: false,
+            timeEstimate: this.estimateTime(assignment.points),
+          }
+
+          // Create or update in database
+          const result = await assignmentsService.createAssignment(dbAssignment)
+
+          if (!result.error) {
+            syncedCount++
+            console.log(`✅ Synced: ${assignment.title}`)
+          } else {
+            errors.push({ title: assignment.title, error: result.error })
+            console.error(`❌ Failed to sync: ${assignment.title}`, result.error)
+          }
+        } catch (error) {
+          errors.push({ title: assignment.title, error: error.message })
+          console.error(`❌ Error syncing ${assignment.title}:`, error)
+        }
+      }
+
+      console.log(`✨ Sync complete: ${syncedCount}/${canvasAssignments.length} assignments synced`)
+
+      return {
+        success: true,
+        synced: syncedCount,
+        total: canvasAssignments.length,
+        errors: errors.length > 0 ? errors : null,
+        message: `Synced ${syncedCount} assignments from Canvas`
+      }
+    } catch (error) {
+      console.error('❌ Canvas sync failed:', error)
+      return {
+        success: false,
+        synced: 0,
+        error: error.message,
+        message: `Sync failed: ${error.message}`
+      }
+    }
+  },
+
+  // Calculate priority based on due date
+  calculatePriority(dueDate) {
+    if (!dueDate) return 'low'
+    const now = new Date()
+    const due = new Date(dueDate)
+    const daysUntil = Math.ceil((due - now) / (1000 * 60 * 60 * 24))
+
+    if (daysUntil <= 1) return 'high'
+    if (daysUntil <= 3) return 'medium'
+    return 'low'
+  },
+
+  // Estimate time based on points
+  estimateTime(points) {
+    if (!points) return '1h'
+    if (points <= 10) return '30m'
+    if (points <= 50) return '1h'
+    if (points <= 100) return '2h'
+    return '3h+'
   },
 }
 

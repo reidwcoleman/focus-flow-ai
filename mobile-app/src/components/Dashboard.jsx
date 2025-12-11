@@ -25,7 +25,6 @@ const Dashboard = ({ onOpenScanner }) => {
   useEffect(() => {
     loadUserName()
     loadAssignments()
-    loadCanvasAssignments()
     checkStreak()
   }, [])
 
@@ -158,31 +157,29 @@ const Dashboard = ({ onOpenScanner }) => {
   }
 
   const loadCanvasAssignments = async () => {
-    if (canvasService.isConnected()) {
-      setIsLoadingCanvas(true)
-      try {
-        const canvasAssignments = await canvasService.getUpcomingAssignments()
+    setIsLoadingCanvas(true)
+    try {
+      // Sync Canvas assignments to database
+      const result = await canvasService.syncToDatabase()
 
-        // Transform Canvas assignments to our format
-        const transformed = canvasAssignments.map((assignment, index) => ({
-          id: assignment.id || `canvas-${index}`,
-          title: assignment.title,
-          subject: assignment.subject,
-          dueDate: assignment.dueDate,
-          priority: determinePriority(assignment.dueDate),
-          progress: assignment.submitted ? 100 : 0,
-          aiCaptured: false,
-          timeEstimate: estimateTime(assignment.points),
-          source: 'canvas',
-        }))
+      if (result.success) {
+        // Reload assignments from database to show synced Canvas assignments
+        await loadAssignments()
 
-        // Merge with existing assignments
-        setAssignments(prev => [...transformed, ...prev.filter(a => a.source !== 'canvas')])
-      } catch (error) {
-        console.error('Failed to load Canvas assignments:', error)
-      } finally {
-        setIsLoadingCanvas(false)
+        // Show success message
+        if (result.synced > 0) {
+          alert(`✅ Successfully synced ${result.synced} assignments from Canvas!`)
+        } else {
+          alert('ℹ️ No new assignments found in Canvas')
+        }
+      } else {
+        throw new Error(result.message || 'Sync failed')
       }
+    } catch (error) {
+      console.error('Failed to sync Canvas assignments:', error)
+      alert(`❌ Failed to sync from Canvas: ${error.message}`)
+    } finally {
+      setIsLoadingCanvas(false)
     }
   }
 
@@ -398,12 +395,16 @@ const Dashboard = ({ onOpenScanner }) => {
                 <span>Syncing...</span>
               </div>
             )}
-            {canvasService.isConnected() && (
+            {!isLoadingCanvas && (
               <button
                 onClick={loadCanvasAssignments}
-                className="text-sm text-primary-500 font-medium hover:text-primary-400 active:scale-95 transition-transform"
+                disabled={isLoadingCanvas}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gradient-to-r from-primary-500 to-accent-cyan text-white font-semibold rounded-lg hover:shadow-glow-cyan transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Refresh
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>Sync from Canvas</span>
               </button>
             )}
           </div>

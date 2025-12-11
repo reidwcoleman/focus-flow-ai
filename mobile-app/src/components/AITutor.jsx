@@ -22,7 +22,10 @@ const AITutor = () => {
   const [chatHistory, setChatHistory] = useState([])
   const [showHistory, setShowHistory] = useState(false)
   const [saveStatus, setSaveStatus] = useState('') // 'saving', 'saved', 'error'
-  const [showDataInfo, setShowDataInfo] = useState(true)
+  const [showDataInfo, setShowDataInfo] = useState(() => {
+    // Check if user has already seen the info banner
+    return !localStorage.getItem('ai_data_info_dismissed')
+  })
   const lastMessageRef = useRef(null)
   const textareaRef = useRef(null)
 
@@ -46,6 +49,14 @@ const AITutor = () => {
     }
     initialize()
   }, [])
+
+  // Hide info banner when user sends first message
+  useEffect(() => {
+    if (messages.length > 1 && showDataInfo) {
+      setShowDataInfo(false)
+      localStorage.setItem('ai_data_info_dismissed', 'true')
+    }
+  }, [messages.length, showDataInfo])
 
   // Load chat history
   const loadChatHistory = async () => {
@@ -114,7 +125,6 @@ const AITutor = () => {
     }])
     setCurrentChatId(null)
     setShowHistory(false)
-    setShowDataInfo(true) // Show info banner on new chat
     aiService.clearHistory()
   }
 
@@ -362,7 +372,10 @@ const AITutor = () => {
                 </p>
               </div>
               <button
-                onClick={() => setShowDataInfo(false)}
+                onClick={() => {
+                  setShowDataInfo(false)
+                  localStorage.setItem('ai_data_info_dismissed', 'true')
+                }}
                 className="flex-shrink-0 p-1 rounded-lg hover:bg-dark-bg-tertiary transition-all active:scale-95"
                 title="Dismiss"
               >
