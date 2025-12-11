@@ -193,7 +193,7 @@ const Planner = () => {
             value={aiInput}
             onChange={(e) => setAiInput(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleAiCreate()}
-            placeholder="e.g., Study chemistry tomorrow at 3pm for 2 hours"
+            placeholder="e.g., Study chemistry tomorrow at 3pm, Math class Monday morning"
             className="flex-1 px-4 py-3 rounded-xl bg-dark-bg-tertiary border border-dark-border-glow text-dark-text-primary placeholder:text-dark-text-muted focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
             disabled={aiProcessing}
           />
@@ -209,9 +209,41 @@ const Planner = () => {
             )}
           </button>
         </div>
-        <p className="text-xs text-dark-text-muted mt-2">
-          Try: "Math class Monday 9am", "Study session tomorrow afternoon", "Team meeting Friday at 2pm"
-        </p>
+        <div className="mt-3 space-y-1">
+          <p className="text-xs text-dark-text-secondary font-semibold">Ultra-Smart Examples:</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setAiInput("Study chemistry tomorrow at 3pm for 2 hours")}
+              className="text-xs px-2 py-1 rounded-lg bg-dark-bg-tertiary border border-dark-border-subtle text-dark-text-muted hover:text-primary-500 hover:border-primary-500/50 transition-all"
+            >
+              With time & duration
+            </button>
+            <button
+              onClick={() => setAiInput("Math class Monday morning")}
+              className="text-xs px-2 py-1 rounded-lg bg-dark-bg-tertiary border border-dark-border-subtle text-dark-text-muted hover:text-primary-500 hover:border-primary-500/50 transition-all"
+            >
+              Relative date
+            </button>
+            <button
+              onClick={() => setAiInput("finish physics homework by Thursday")}
+              className="text-xs px-2 py-1 rounded-lg bg-dark-bg-tertiary border border-dark-border-subtle text-dark-text-muted hover:text-primary-500 hover:border-primary-500/50 transition-all"
+            >
+              Assignment deadline
+            </button>
+            <button
+              onClick={() => setAiInput("lunch break at noon for 30 minutes")}
+              className="text-xs px-2 py-1 rounded-lg bg-dark-bg-tertiary border border-dark-border-subtle text-dark-text-muted hover:text-primary-500 hover:border-primary-500/50 transition-all"
+            >
+              Today with specific time
+            </button>
+            <button
+              onClick={() => setAiInput("CS101 lecture next Tuesday 2pm in library")}
+              className="text-xs px-2 py-1 rounded-lg bg-dark-bg-tertiary border border-dark-border-subtle text-dark-text-muted hover:text-primary-500 hover:border-primary-500/50 transition-all"
+            >
+              With location
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Calendar Header */}
