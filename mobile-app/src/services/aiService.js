@@ -94,11 +94,11 @@ When students ask:
       contextPrompt += `\n📚 UPCOMING ASSIGNMENTS: All caught up! 🎉\n`
     }
 
-    // Add calendar/schedule for next week (Planning tab - time-blocked events)
+    // Add upcoming calendar/schedule (next 7 days)
     if (this.userContext.upcoming?.events && this.userContext.upcoming.events.length > 0) {
-      contextPrompt += `\n📅 UPCOMING SCHEDULE (Next 7 Days):\n`
+      contextPrompt += `\n📅 UPCOMING SCHEDULE (Next 7 Days - ${this.userContext.upcoming.events.length} events):\n`
       this.userContext.upcoming.events.forEach(activity => {
-        const date = new Date(activity.activity_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+        const date = new Date(activity.activity_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
         const time = activity.start_time ? activity.start_time.slice(0, 5) : 'No time'
         const duration = activity.duration_minutes ? `${activity.duration_minutes}min` : ''
         const type = activity.activity_type || 'event'
@@ -107,6 +107,39 @@ When students ask:
       })
     } else {
       contextPrompt += `\n📅 UPCOMING SCHEDULE: No scheduled activities in the next 7 days\n`
+    }
+
+    // Add ALL calendar activities (full schedule context)
+    if (this.userContext.calendar && this.userContext.calendar.length > 0) {
+      const totalEvents = this.userContext.calendar.length
+      const upcomingCount = this.userContext.upcoming?.events?.length || 0
+      const pastEvents = totalEvents - upcomingCount
+      contextPrompt += `\n📆 FULL CALENDAR (Total ${totalEvents} activities: ${upcomingCount} upcoming, ${pastEvents} past):\n`
+
+      // Group by date for better readability
+      const eventsByDate = {}
+      this.userContext.calendar.forEach(activity => {
+        const dateKey = activity.activity_date
+        if (!eventsByDate[dateKey]) eventsByDate[dateKey] = []
+        eventsByDate[dateKey].push(activity)
+      })
+
+      // Show activities grouped by date (limit to 30 most recent/upcoming)
+      const sortedDates = Object.keys(eventsByDate).sort()
+      sortedDates.slice(0, 30).forEach(dateKey => {
+        const date = new Date(dateKey + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+        contextPrompt += `\n${date}:\n`
+        eventsByDate[dateKey].forEach(activity => {
+          const time = activity.start_time ? activity.start_time.slice(0, 5) : 'All day'
+          const duration = activity.duration_minutes ? `(${activity.duration_minutes}min)` : ''
+          const subject = activity.subject ? `[${activity.subject}]` : ''
+          contextPrompt += `  • ${time}: ${activity.title} ${subject} ${duration}\n`
+        })
+      })
+
+      if (sortedDates.length > 30) {
+        contextPrompt += `\n... and ${sortedDates.length - 30} more dates with activities\n`
+      }
     }
 
     // Add grades/classes info
@@ -157,17 +190,31 @@ When students ask:
       const { data: assignmentsData } = await assignmentsService.getUpcomingAssignments()
       const assignments = assignmentsService.toAppFormatBatch(assignmentsData || [])
 
-      // Load calendar activities for the next 30 days
+      // Load ALL calendar activities (past 7 days + next 60 days for full context)
       const today = new Date()
-      const nextMonth = new Date(today)
-      nextMonth.setDate(today.getDate() + 30)
+      today.setHours(0, 0, 0, 0) // Start of today in local timezone
+
+      const pastWeek = new Date(today)
+      pastWeek.setDate(today.getDate() - 7)
+
+      const futureRange = new Date(today)
+      futureRange.setDate(today.getDate() + 60)
+
+      // Format dates as YYYY-MM-DD in local timezone
+      const formatLocalDate = (date) => {
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        return `${year}-${month}-${day}`
+      }
 
       const calendarData = await calendarService.getActivitiesByDateRange(
-        today.toISOString().split('T')[0],
-        nextMonth.toISOString().split('T')[0]
+        formatLocalDate(pastWeek),
+        formatLocalDate(futureRange)
       )
 
       console.log('📅 Loaded calendar data for AI:', calendarData)
+      console.log('📅 Date range:', formatLocalDate(pastWeek), 'to', formatLocalDate(futureRange))
 
       // Load notes
       const { data: notes } = await supabase
@@ -215,13 +262,19 @@ When students ask:
         return new Date(a.dueDate) < new Date()
       }).length
 
-      // Get upcoming calendar events (next 7 days)
-      const weekFromNow = new Date()
-      weekFromNow.setDate(weekFromNow.getDate() + 7)
+      // Get upcoming calendar events (today + next 7 days = 8 days total)
+      const todayStart = new Date(today)
+      const weekFromNow = new Date(today)
+      weekFromNow.setDate(today.getDate() + 7)
+
       const upcomingEvents = calendarData.filter(event => {
-        const eventDate = new Date(event.activity_date)
-        return eventDate >= today && eventDate <= weekFromNow
+        const eventDate = new Date(event.activity_date + 'T00:00:00') // Parse as local date
+        return eventDate >= todayStart && eventDate <= weekFromNow
       })
+
+      console.log('📅 Today:', formatLocalDate(todayStart))
+      console.log('📅 Week from now:', formatLocalDate(weekFromNow))
+      console.log('📅 Upcoming events:', upcomingEvents.length)
 
       // Calculate total study hours this week
       const weekStart = new Date()
