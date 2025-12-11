@@ -112,4 +112,57 @@ CREATE TRIGGER update_calendar_activities_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_calendar_activities_updated_at();
 
--- Done! The tables should now be created.
+-- 3. Create ai_chats table for storing AI conversation history
+CREATE TABLE IF NOT EXISTS ai_chats (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  title TEXT NOT NULL,
+  messages JSONB NOT NULL DEFAULT '[]'::jsonb,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS ai_chats_user_id_idx ON ai_chats(user_id);
+CREATE INDEX IF NOT EXISTS ai_chats_created_at_idx ON ai_chats(created_at DESC);
+
+ALTER TABLE ai_chats ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own chats"
+  ON ai_chats FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can create their own chats"
+  ON ai_chats FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own chats"
+  ON ai_chats FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own chats"
+  ON ai_chats FOR DELETE
+  USING (auth.uid() = user_id);
+
+CREATE OR REPLACE FUNCTION update_ai_chats_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER ai_chats_updated_at
+  BEFORE UPDATE ON ai_chats
+  FOR EACH ROW
+  EXECUTE FUNCTION update_ai_chats_updated_at();
+
+-- 4. Add streak tracking to user_profiles
+ALTER TABLE user_profiles
+ADD COLUMN IF NOT EXISTS current_streak INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS longest_streak INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS last_login_date DATE;
+
+CREATE INDEX IF NOT EXISTS idx_user_profiles_last_login
+ON user_profiles(last_login_date);
+
+-- Done! All tables and features should now be created.
