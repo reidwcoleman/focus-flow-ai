@@ -346,7 +346,7 @@ const AITutor = () => {
       </div>
 
       {/* Chat History Quick Access */}
-      {chatHistory.length > 0 && messages.length > 1 && (
+      {chatHistory.length > 0 && messages.length === 1 && (
         <div className="flex-shrink-0 mb-4 animate-fadeIn">
           <button
             onClick={() => setShowHistory(true)}
