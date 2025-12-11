@@ -8,7 +8,7 @@ const AITutor = () => {
     {
       id: 1,
       role: 'assistant',
-      content: "Hi! I'm your AI tutor. I can help you understand concepts, solve problems, and prepare for exams. What would you like to work on today?",
+      content: "Hi! I'm your AI tutor with access to your assignments, calendar, study hours, notes, and more. I can help you with study planning, upcoming work, concept explanations, and exam prep. What would you like to work on?",
       timestamp: new Date(),
     },
   ])
@@ -22,6 +22,7 @@ const AITutor = () => {
   const [chatHistory, setChatHistory] = useState([])
   const [showHistory, setShowHistory] = useState(false)
   const [saveStatus, setSaveStatus] = useState('') // 'saving', 'saved', 'error'
+  const [showDataInfo, setShowDataInfo] = useState(true)
   const lastMessageRef = useRef(null)
   const textareaRef = useRef(null)
 
@@ -108,11 +109,12 @@ const AITutor = () => {
     setMessages([{
       id: Date.now(),
       role: 'assistant',
-      content: "Hi! I'm your AI tutor. I can help you understand concepts, solve problems, and prepare for exams. What would you like to work on today?",
+      content: "Hi! I'm your AI tutor with access to your assignments, calendar, study hours, notes, and more. I can help you with study planning, upcoming work, concept explanations, and exam prep. What would you like to work on?",
       timestamp: new Date(),
     }])
     setCurrentChatId(null)
     setShowHistory(false)
+    setShowDataInfo(true) // Show info banner on new chat
     aiService.clearHistory()
   }
 
@@ -240,8 +242,8 @@ const AITutor = () => {
   }
 
   const quickQuestions = [
-    "Explain this concept",
-    "Practice problems",
+    "What's on my schedule?",
+    "What assignments are due?",
     "Study tips",
     "Quiz me",
   ]
@@ -343,6 +345,34 @@ const AITutor = () => {
             </button>
           )}
         </div>
+
+        {/* AI Data Access Info Banner */}
+        {showDataInfo && (
+          <div className="mt-3 p-3 bg-gradient-to-r from-accent-cyan/10 to-primary-500/10 rounded-xl border border-accent-cyan/30 shadow-dark-soft animate-fadeIn">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <svg className="w-4 h-4 text-accent-cyan flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <h4 className="text-xs font-bold text-dark-text-primary">I have access to your data!</h4>
+                </div>
+                <p className="text-[11px] text-dark-text-secondary leading-relaxed">
+                  I can see your <span className="font-semibold text-accent-cyan">assignments</span>, <span className="font-semibold text-accent-cyan">calendar</span>, <span className="font-semibold text-accent-cyan">study hours</span>, <span className="font-semibold text-accent-cyan">notes</span>, and <span className="font-semibold text-accent-cyan">streak</span>. Ask me about your schedule, what's due, or study advice!
+                </p>
+              </div>
+              <button
+                onClick={() => setShowDataInfo(false)}
+                className="flex-shrink-0 p-1 rounded-lg hover:bg-dark-bg-tertiary transition-all active:scale-95"
+                title="Dismiss"
+              >
+                <svg className="w-3.5 h-3.5 text-dark-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Chat History Quick Access */}
