@@ -1,15 +1,15 @@
 /**
- * App Blocking Service - iOS Focus Mode Integration
- * Manages app blocking sessions and integrates with iOS Screen Time
+ * App Blocking Service - Complete Focus Mode System
+ * Manages blocking sessions, lists, and schedules
  */
 
 import supabase from '../lib/supabase'
 
 class AppBlockingService {
-  /**
-   * Get all blocking sessions for the current user
-   * @returns {Promise<Array>} Array of blocking sessions
-   */
+  // ========================================
+  // BLOCKING SESSIONS
+  // ========================================
+
   async getBlockingSessions() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -29,10 +29,6 @@ class AppBlockingService {
     }
   }
 
-  /**
-   * Get active blocking session
-   * @returns {Promise<Object|null>} Active session or null
-   */
   async getActiveSession() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -56,17 +52,12 @@ class AppBlockingService {
     }
   }
 
-  /**
-   * Create a new blocking session
-   * @param {Object} sessionData - Session configuration
-   * @returns {Promise<Object>} Created session
-   */
   async createSession(sessionData) {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      const { blockedApps, duration, customEndTime } = sessionData
+      const { blockedApps, duration, customEndTime, blockingListId, sessionType } = sessionData
 
       const startTime = new Date()
       const endTime = customEndTime || new Date(startTime.getTime() + duration * 60 * 1000)
@@ -75,16 +66,23 @@ class AppBlockingService {
         .from('blocking_sessions')
         .insert({
           user_id: user.id,
+          blocking_list_id: blockingListId || null,
           blocked_apps: blockedApps,
           start_time: startTime.toISOString(),
           end_time: endTime.toISOString(),
           duration_minutes: duration,
+          session_type: sessionType || 'manual',
           is_active: true,
         })
         .select()
         .single()
 
       if (error) throw error
+
+      // Increment usage count if using a blocking list
+      if (blockingListId) {
+        await this.incrementListUsage(blockingListId)
+      }
 
       console.log('✅ Created blocking session:', data)
       return data
@@ -94,11 +92,6 @@ class AppBlockingService {
     }
   }
 
-  /**
-   * End a blocking session
-   * @param {string} sessionId - Session ID to end
-   * @returns {Promise<Object>} Updated session
-   */
   async endSession(sessionId) {
     try {
       const { data, error } = await supabase
@@ -121,10 +114,6 @@ class AppBlockingService {
     }
   }
 
-  /**
-   * Get blocking statistics
-   * @returns {Promise<Object>} Statistics
-   */
   async getStats() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -161,11 +150,6 @@ class AppBlockingService {
     }
   }
 
-  /**
-   * Get most blocked apps
-   * @param {Array} sessions - All sessions
-   * @returns {Array} Most blocked apps with counts
-   */
   getMostBlockedApps(sessions) {
     const appCounts = {}
 
@@ -181,15 +165,228 @@ class AppBlockingService {
       .map(([app, count]) => ({ app, count }))
   }
 
-  /**
-   * Generate iOS Shortcut URL for Screen Time integration
-   * @param {Array} apps - Apps to block
-   * @param {number} minutes - Duration in minutes
-   * @returns {string} Shortcut URL
-   */
+  // ========================================
+  // BLOCKING LISTS
+  // ========================================
+
+  async getBlockingLists() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
+      const { data, error } = await supabase
+        .from('blocking_lists')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('usage_count', { ascending: false })
+
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Failed to get blocking lists:', error)
+      return []
+    }
+  }
+
+  async createBlockingList(listData) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
+      const { name, description, appIds, icon, color, isDefault } = listData
+
+      const { data, error } = await supabase
+        .from('blocking_lists')
+        .insert({
+          user_id: user.id,
+          name,
+          description: description || null,
+          app_ids: appIds,
+          icon: icon || '🎯',
+          color: color || '#3B82F6',
+          is_default: isDefault || false,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      console.log('✅ Created blocking list:', data)
+      return data
+    } catch (error) {
+      console.error('❌ Failed to create blocking list:', error)
+      throw error
+    }
+  }
+
+  async updateBlockingList(listId, updates) {
+    try {
+      const { data, error } = await supabase
+        .from('blocking_lists')
+        .update(updates)
+        .eq('id', listId)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      console.log('✅ Updated blocking list:', data)
+      return data
+    } catch (error) {
+      console.error('❌ Failed to update blocking list:', error)
+      throw error
+    }
+  }
+
+  async deleteBlockingList(listId) {
+    try {
+      const { error } = await supabase
+        .from('blocking_lists')
+        .delete()
+        .eq('id', listId)
+
+      if (error) throw error
+
+      console.log('✅ Deleted blocking list')
+      return true
+    } catch (error) {
+      console.error('❌ Failed to delete blocking list:', error)
+      throw error
+    }
+  }
+
+  async incrementListUsage(listId) {
+    try {
+      const { error } = await supabase.rpc('increment', {
+        table_name: 'blocking_lists',
+        row_id: listId,
+        column_name: 'usage_count',
+      })
+
+      if (error) {
+        // Fallback if RPC doesn't exist
+        const { data: list } = await supabase
+          .from('blocking_lists')
+          .select('usage_count')
+          .eq('id', listId)
+          .single()
+
+        if (list) {
+          await supabase
+            .from('blocking_lists')
+            .update({ usage_count: (list.usage_count || 0) + 1 })
+            .eq('id', listId)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to increment usage:', error)
+    }
+  }
+
+  // ========================================
+  // SCHEDULED BLOCKS
+  // ========================================
+
+  async getScheduledBlocks() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
+      const { data, error } = await supabase
+        .from('scheduled_blocks')
+        .select(`
+          *,
+          blocking_list:blocking_lists(*)
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Failed to get scheduled blocks:', error)
+      return []
+    }
+  }
+
+  async createScheduledBlock(scheduleData) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
+      const { name, blockingListId, scheduleType, startTime, endTime, daysOfWeek, startDate, isEnabled } = scheduleData
+
+      const { data, error } = await supabase
+        .from('scheduled_blocks')
+        .insert({
+          user_id: user.id,
+          blocking_list_id: blockingListId,
+          name,
+          schedule_type: scheduleType,
+          start_time: startTime,
+          end_time: endTime,
+          days_of_week: daysOfWeek || null,
+          start_date: startDate || null,
+          is_enabled: isEnabled !== undefined ? isEnabled : true,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      console.log('✅ Created scheduled block:', data)
+      return data
+    } catch (error) {
+      console.error('❌ Failed to create scheduled block:', error)
+      throw error
+    }
+  }
+
+  async updateScheduledBlock(scheduleId, updates) {
+    try {
+      const { data, error } = await supabase
+        .from('scheduled_blocks')
+        .update(updates)
+        .eq('id', scheduleId)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      console.log('✅ Updated scheduled block:', data)
+      return data
+    } catch (error) {
+      console.error('❌ Failed to update scheduled block:', error)
+      throw error
+    }
+  }
+
+  async deleteScheduledBlock(scheduleId) {
+    try {
+      const { error } = await supabase
+        .from('scheduled_blocks')
+        .delete()
+        .eq('id', scheduleId)
+
+      if (error) throw error
+
+      console.log('✅ Deleted scheduled block')
+      return true
+    } catch (error) {
+      console.error('❌ Failed to delete scheduled block:', error)
+      throw error
+    }
+  }
+
+  async toggleScheduledBlock(scheduleId, isEnabled) {
+    return this.updateScheduledBlock(scheduleId, { is_enabled: isEnabled })
+  }
+
+  // ========================================
+  // UTILITIES
+  // ========================================
+
   generateShortcutURL(apps, minutes) {
-    // This creates a URL scheme to integrate with iOS Shortcuts
-    // User would need to create a Shortcut that responds to this URL
     const params = new URLSearchParams({
       apps: apps.join(','),
       duration: minutes,
