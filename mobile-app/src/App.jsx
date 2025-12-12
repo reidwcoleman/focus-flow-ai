@@ -91,14 +91,14 @@ function App() {
   }, [user])
 
   const tabs = [
+    { id: 'canvas', label: 'Canvas', icon: 'academic' },
     { id: 'dashboard', label: 'Home', icon: 'home' },
     { id: 'planner', label: 'Plan', icon: 'calendar' },
-    { id: 'study', label: 'Study', icon: 'book' },
     { id: 'scan', label: 'Scan', icon: 'camera', isCenter: true },
+    { id: 'study', label: 'Study', icon: 'book' },
     { id: 'focus', label: 'Focus', icon: 'target' },
     { id: 'tutor', label: 'AI', icon: 'sparkles' },
     { id: 'analytics', label: 'Stats', icon: 'chart' },
-    { id: 'canvas', label: 'Canvas', icon: 'academic' },
     { id: 'account', label: 'Account', icon: 'user' },
   ]
 
