@@ -86,21 +86,27 @@ export default function Account() {
     setSuccess('')
 
     try {
+      console.log('📝 Saving Canvas credentials...', { canvasUrl: canvasUrl.trim() })
       const result = await authService.updateUserProfile({
         canvas_url: canvasUrl.trim(),
         canvas_token: canvasToken.trim()
       })
 
+      console.log('💾 Update result:', result)
+
       if (result.error) {
-        setError('Failed to update Canvas credentials')
+        console.error('❌ Update error:', result.error)
+        setError(`Failed to update Canvas credentials: ${result.error.message || 'Unknown error'}`)
       } else {
+        console.log('✅ Canvas credentials saved successfully')
         setSuccess('Canvas integration updated! Test connection to verify.')
         setIsEditingCanvas(false)
         await loadUserData()
         setTimeout(() => setSuccess(''), 5000)
       }
     } catch (err) {
-      setError('Failed to update Canvas credentials')
+      console.error('❌ Exception saving Canvas credentials:', err)
+      setError(`Failed to update Canvas credentials: ${err.message || 'Unknown error'}`)
     } finally {
       setSaving(false)
     }
