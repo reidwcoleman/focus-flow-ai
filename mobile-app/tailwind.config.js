@@ -82,6 +82,19 @@ export default {
             history: '#2d2116',    // Dark bronze
           },
         },
+        // Opal-inspired colors for Focus Mode
+        opal: {
+          purple: {
+            DEFAULT: '#4E30BD',    // Deep purple primary
+            light: '#7C5CFF',      // Light purple
+            glow: 'rgba(78, 48, 189, 0.4)',  // Glow effect
+          },
+          cyan: {
+            DEFAULT: '#A0FFF9',    // Vibrant cyan accent
+            muted: 'rgba(160, 255, 249, 0.6)',  // Muted cyan
+          },
+          bg: '#0D0D0F',           // Pure black background
+        },
       },
       fontFamily: {
         sans: [
@@ -134,6 +147,11 @@ export default {
         'rim-light': '0 0 0 1px rgba(58, 79, 106, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.05)',
         'glow-cyan': '0 0 20px rgba(88, 166, 255, 0.3)',
         'glow-cyan-lg': '0 0 40px rgba(88, 166, 255, 0.4)',
+        // Opal glow shadows
+        'glow-opal': '0 0 20px rgba(78, 48, 189, 0.4)',
+        'glow-opal-lg': '0 0 40px rgba(78, 48, 189, 0.5)',
+        'glow-opal-xl': '0 0 60px rgba(78, 48, 189, 0.6)',
+        'glow-opal-cyan': '0 0 20px rgba(160, 255, 249, 0.3)',
       },
       borderRadius: {
         '4xl': '2rem',
@@ -154,6 +172,9 @@ export default {
         'scaleIn': 'scaleIn 0.2s ease-out',
         'shimmer': 'shimmer 2s infinite',
         'pulse-soft': 'pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        // Opal animations
+        'opal-pulse': 'opal-pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'opal-breathe': 'opal-breathe 4s ease-in-out infinite',
       },
       keyframes: {
         fadeIn: {
@@ -183,6 +204,15 @@ export default {
         'pulse-soft': {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.7' },
+        },
+        // Opal keyframes
+        'opal-pulse': {
+          '0%, 100%': { boxShadow: '0 0 20px rgba(78, 48, 189, 0.4)', transform: 'scale(1)' },
+          '50%': { boxShadow: '0 0 40px rgba(124, 92, 255, 0.5)', transform: 'scale(1.02)' },
+        },
+        'opal-breathe': {
+          '0%, 100%': { transform: 'scale(1)', opacity: '0.6' },
+          '50%': { transform: 'scale(1.05)', opacity: '0.8' },
         },
       },
     },

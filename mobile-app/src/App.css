@@ -85,3 +85,96 @@
 .success-flash {
   animation: success-glow 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* =============================================
+   OPAL-STYLE ANIMATIONS - Focus Mode
+   ============================================= */
+
+/* 1. Timer Pulse Glow - Breathing animation for active timer */
+@keyframes timer-pulse-glow {
+  0%, 100% {
+    box-shadow:
+      0 0 20px rgba(78, 48, 189, 0.3),
+      0 0 40px rgba(78, 48, 189, 0.15);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow:
+      0 0 35px rgba(124, 92, 255, 0.5),
+      0 0 60px rgba(124, 92, 255, 0.25);
+    transform: scale(1.02);
+  }
+}
+
+/* 2. Progress Ring Glow - Pulsing glow behind the SVG ring */
+@keyframes ring-glow-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgba(78, 48, 189, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(124, 92, 255, 0.7));
+  }
+}
+
+/* 3. Card Entrance - Fade up with scale */
+@keyframes opal-card-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 4. Checkmark Pop - When app is selected */
+@keyframes opal-checkmark-pop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.3);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* 5. Gradient Text Animation - Moving gradient for headers */
+@keyframes opal-gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Animation Utility Classes */
+.animate-timer-pulse {
+  animation: timer-pulse-glow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-ring-glow {
+  animation: ring-glow-pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-opal-card-enter {
+  animation: opal-card-enter 0.4s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  opacity: 0;
+}
+
+.animate-opal-checkmark {
+  animation: opal-checkmark-pop 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+}
+
+.animate-opal-gradient {
+  background-size: 200% 200%;
+  animation: opal-gradient-shift 4s ease infinite;
+}

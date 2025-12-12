@@ -195,12 +195,15 @@ const FocusMode = () => {
     const progress = getProgressPercentage()
 
     return (
-      <div className="min-h-screen bg-gradient-to-b from-dark-bg-primary via-dark-bg-surface to-dark-bg-primary px-5 pb-24 pt-12">
+      <div className="min-h-screen bg-[#0D0D0F] px-5 pb-24 pt-12">
         <div className="max-w-md mx-auto">
           {/* Timer Circle */}
-          <div className="relative w-64 h-64 mx-auto mb-8">
+          <div className="relative w-64 h-64 mx-auto mb-8 animate-timer-pulse rounded-full">
+            {/* Ambient Glow Background */}
+            <div className="absolute inset-0 rounded-full bg-[#4E30BD]/10 blur-2xl animate-opal-breathe" />
+
             {/* Background Circle */}
-            <svg className="w-full h-full -rotate-90">
+            <svg className="w-full h-full -rotate-90 animate-ring-glow relative z-10">
               <circle
                 cx="128"
                 cy="128"
@@ -215,28 +218,30 @@ const FocusMode = () => {
                 cx="128"
                 cy="128"
                 r="120"
-                stroke="url(#gradient)"
+                stroke="url(#opal-gradient)"
                 strokeWidth="8"
                 fill="none"
                 strokeLinecap="round"
                 strokeDasharray={`${2 * Math.PI * 120}`}
                 strokeDashoffset={`${2 * Math.PI * 120 * (1 - progress / 100)}`}
-                className="transition-all duration-1000"
+                className="transition-[stroke-dashoffset] duration-1000 ease-out"
+                style={{ filter: 'drop-shadow(0 0 10px rgba(78, 48, 189, 0.5))' }}
               />
               <defs>
-                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#10b981" />
-                  <stop offset="100%" stopColor="#059669" />
+                <linearGradient id="opal-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#4E30BD" />
+                  <stop offset="50%" stopColor="#7C5CFF" />
+                  <stop offset="100%" stopColor="#A0FFF9" />
                 </linearGradient>
               </defs>
             </svg>
 
             {/* Timer Text */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <div className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-br from-green-400 to-emerald-500 tabular-nums mb-2">
+            <div className="absolute inset-0 flex flex-col items-center justify-center z-20">
+              <div className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-[#7C5CFF] to-[#A0FFF9] tabular-nums font-mono mb-2 drop-shadow-[0_0_15px_rgba(124,92,255,0.5)]">
                 {formatTime(timeRemaining)}
               </div>
-              <p className="text-sm text-dark-text-muted">Focus time remaining</p>
+              <p className="text-sm text-dark-text-muted uppercase tracking-widest">Remaining</p>
             </div>
           </div>
 
@@ -275,7 +280,7 @@ const FocusMode = () => {
           {/* End Button */}
           <button
             onClick={handleEndSession}
-            className="w-full py-4 px-6 bg-dark-bg-secondary border border-dark-border-glow text-dark-text-primary font-semibold rounded-2xl hover:bg-dark-bg-tertiary transition-all active:scale-95"
+            className="w-full py-4 px-6 bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] text-white font-semibold rounded-full hover:bg-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.15)] transition-all duration-200 active:scale-95"
           >
             End Session
           </button>
@@ -295,9 +300,9 @@ const FocusMode = () => {
       : APP_LIBRARY
 
     return (
-      <div className="pb-6 animate-fadeIn">
+      <div className="pb-6 animate-fadeIn bg-[#0D0D0F] min-h-screen">
         {/* Header */}
-        <div className="sticky top-0 bg-dark-bg-primary/95 backdrop-blur-xl z-20 pb-4 mb-4">
+        <div className="sticky top-0 bg-[#0D0D0F]/95 backdrop-blur-xl z-20 pb-4 mb-4">
           <div className="flex items-center gap-4 mb-4">
             <button
               onClick={() => setCurrentView('home')}
@@ -333,10 +338,10 @@ const FocusMode = () => {
               <button
                 key={preset.minutes}
                 onClick={() => setSelectedDuration(preset.minutes)}
-                className={`flex-shrink-0 px-4 py-2 rounded-full font-semibold text-sm transition-all active:scale-95 ${
+                className={`flex-shrink-0 px-4 py-2 rounded-full font-semibold text-sm transition-all duration-200 active:scale-95 ${
                   selectedDuration === preset.minutes
-                    ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-glow-green'
-                    : 'bg-dark-bg-secondary border border-dark-border-glow text-dark-text-secondary'
+                    ? 'bg-gradient-to-r from-[#4E30BD] to-[#7C5CFF] text-white shadow-glow-opal scale-105'
+                    : 'bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] text-dark-text-secondary hover:scale-105 hover:border-[#7C5CFF]/30'
                 }`}
               >
                 {preset.emoji} {preset.label}
@@ -366,24 +371,24 @@ const FocusMode = () => {
                       <button
                         key={app.id}
                         onClick={() => toggleApp(app.id)}
-                        className={`relative flex flex-col items-center gap-2 p-3 rounded-2xl transition-all active:scale-95 ${
+                        className={`relative flex flex-col items-center gap-2 p-3 rounded-2xl transition-all duration-200 active:scale-95 ${
                           isSelected
-                            ? 'bg-green-500/10 ring-2 ring-green-500'
-                            : 'bg-dark-bg-secondary hover:bg-dark-bg-tertiary'
+                            ? 'bg-[rgba(78,48,189,0.15)] ring-2 ring-[#7C5CFF]'
+                            : 'bg-[rgba(255,255,255,0.05)] hover:bg-[rgba(255,255,255,0.08)]'
                         }`}
                       >
-                        <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${app.gradient} flex items-center justify-center text-2xl shadow-soft-md ${
-                          isSelected ? 'scale-95' : ''
+                        <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${app.gradient} flex items-center justify-center text-2xl shadow-soft-md transition-transform duration-200 ${
+                          isSelected ? 'scale-90' : ''
                         }`}>
                           {app.icon}
                         </div>
-                        <span className={`text-xs text-center font-medium leading-tight ${
-                          isSelected ? 'text-green-400' : 'text-dark-text-muted'
+                        <span className={`text-xs text-center font-medium leading-tight transition-colors duration-200 ${
+                          isSelected ? 'text-[#A0FFF9]' : 'text-dark-text-muted'
                         }`}>
                           {app.name}
                         </span>
                         {isSelected && (
-                          <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center shadow-glow-green">
+                          <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-gradient-to-r from-[#4E30BD] to-[#7C5CFF] flex items-center justify-center shadow-glow-opal animate-opal-checkmark">
                             <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                             </svg>
@@ -404,7 +409,7 @@ const FocusMode = () => {
             <button
               onClick={handleStartWithCustomApps}
               disabled={loading}
-              className="w-full max-w-md mx-auto py-4 px-6 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold text-lg rounded-2xl shadow-glow-green-lg hover:shadow-glow-green-xl transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
+              className="w-full max-w-md mx-auto py-4 px-6 bg-gradient-to-r from-[#4E30BD] to-[#7C5CFF] text-white font-bold text-lg rounded-full shadow-glow-opal-lg hover:shadow-glow-opal-xl hover:scale-[1.03] transition-all duration-300 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
             >
               {loading ? (
                 <>
@@ -430,10 +435,10 @@ const FocusMode = () => {
   // HOME VIEW (Opal-style)
   // ===================================
   return (
-    <div className="space-y-6 pb-6 animate-fadeIn">
+    <div className="space-y-8 pb-6 px-6 animate-fadeIn bg-[#0D0D0F] min-h-screen">
       {/* Header */}
       <div className="text-center pt-4">
-        <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-br from-green-400 via-emerald-500 to-teal-500 mb-2">
+        <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#4E30BD] via-[#7C5CFF] to-[#A0FFF9] bg-[length:200%_200%] animate-opal-gradient mb-2">
           Focus
         </h1>
         <p className="text-sm text-dark-text-secondary">Block apps and stay in the zone</p>
@@ -441,18 +446,18 @@ const FocusMode = () => {
 
       {/* Stats */}
       {stats && stats.totalSessions > 0 && (
-        <div className="bg-dark-bg-secondary rounded-3xl p-5 border border-dark-border-glow">
+        <div className="bg-[rgba(255,255,255,0.05)] backdrop-blur-xl rounded-3xl p-6 border border-[rgba(255,255,255,0.1)] animate-opal-card-enter">
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
-              <div className="text-2xl font-bold text-green-400">{stats.totalHoursBlocked || 0}h</div>
+              <div className="text-2xl font-bold text-[#A0FFF9]">{stats.totalHoursBlocked || 0}h</div>
               <div className="text-xs text-dark-text-muted mt-1">Focused</div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-primary-500">{stats.totalSessions}</div>
+              <div className="text-2xl font-bold text-[#7C5CFF]">{stats.totalSessions}</div>
               <div className="text-xs text-dark-text-muted mt-1">Sessions</div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-accent-cyan">{stats.longestStreak || 0}</div>
+              <div className="text-2xl font-bold text-[#A0FFF9]">{stats.longestStreak || 0}</div>
               <div className="text-xs text-dark-text-muted mt-1">Day Streak</div>
             </div>
           </div>
@@ -461,16 +466,17 @@ const FocusMode = () => {
 
       {/* Quick Start Presets */}
       <div>
-        <h3 className="text-sm font-bold text-dark-text-secondary uppercase tracking-wide mb-3 px-1">Quick Start</h3>
+        <h3 className="text-xs font-bold text-dark-text-secondary uppercase tracking-[0.2em] mb-4 px-1">Quick Start</h3>
         <div className="space-y-3">
-          {blockingLists.slice(0, 4).map(list => {
+          {blockingLists.slice(0, 4).map((list, index) => {
             const appCount = list.app_ids?.length || 0
             const previewApps = list.app_ids?.slice(0, 4).map(getAppById).filter(Boolean) || []
 
             return (
               <div
                 key={list.id}
-                className="bg-dark-bg-secondary rounded-2xl p-5 border border-dark-border-glow hover:border-primary-500/50 transition-all"
+                className="bg-[rgba(255,255,255,0.05)] backdrop-blur-xl rounded-2xl p-6 border border-[rgba(255,255,255,0.1)] hover:border-[rgba(124,92,255,0.5)] transition-all duration-300 animate-opal-card-enter"
+                style={{ animationDelay: `${index * 0.08}s` }}
               >
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
@@ -508,7 +514,7 @@ const FocusMode = () => {
                       key={preset.minutes}
                       onClick={() => handleQuickStart(list, preset.minutes)}
                       disabled={loading}
-                      className="py-2.5 px-3 bg-dark-bg-tertiary border border-dark-border-glow hover:border-green-500 hover:bg-green-500/10 text-dark-text-primary font-semibold text-sm rounded-xl transition-all active:scale-95 disabled:opacity-50"
+                      className="py-2.5 px-3 bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] hover:border-[#7C5CFF] hover:bg-[rgba(78,48,189,0.15)] text-white font-semibold text-sm rounded-full transition-all duration-200 active:scale-95 disabled:opacity-50"
                     >
                       {preset.label}
                     </button>
@@ -523,7 +529,7 @@ const FocusMode = () => {
       {/* Custom Block Button */}
       <button
         onClick={handleStartCustom}
-        className="w-full py-5 px-6 bg-gradient-to-r from-primary-500 via-accent-purple to-accent-cyan text-white font-bold text-lg rounded-2xl shadow-soft-lg hover:shadow-glow-cyan-lg transition-all active:scale-95 flex items-center justify-center gap-3"
+        className="w-full py-5 px-6 bg-gradient-to-r from-[#4E30BD] via-[#7C5CFF] to-[#A0FFF9] text-white font-bold text-lg rounded-full shadow-glow-opal-lg hover:shadow-glow-opal-xl hover:scale-[1.03] transition-all duration-300 active:scale-95 flex items-center justify-center gap-3"
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
