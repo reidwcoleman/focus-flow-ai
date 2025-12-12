@@ -1,11 +1,13 @@
 /**
  * Vision AI Service for Focus Flow
- * Handles OCR and image analysis using Groq Llama 4 Scout
+ * Handles OCR and image analysis using Groq Llama 4 Scout via Supabase Edge Function
  */
 
+import supabase from '../lib/supabase'
+
 const VISION_CONFIG = {
-  groqApiKey: import.meta.env.VITE_GROQ_API_KEY || '',
-  groqEndpoint: 'https://api.groq.com/openai/v1/chat/completions',
+  useEdgeFunction: true, // Use Supabase Edge Function for secure API calls
+  edgeFunctionUrl: null, // Will be set dynamically from Supabase client
   visionModel: 'meta-llama/llama-4-scout-17b-16e-instruct',
   maxTokens: 2000,
   temperature: 0.3, // Lower for more consistent extraction
@@ -13,33 +15,21 @@ const VISION_CONFIG = {
 
 class VisionService {
   constructor() {
-    this.isConfigured = !!VISION_CONFIG.groqApiKey
+    // Always use edge function (API key is stored securely in Supabase)
+    this.isConfigured = true
+    this.supabaseUrl = import.meta.env.VITE_SUPABASE_URL
   }
 
   /**
-   * Process handwritten notes image into structured text
-   * @param {string} base64Image - Base64 encoded image (with or without data URL prefix)
-   * @returns {Promise<{rawText: string, formattedContent: string, title: string, subject: string, tags: string[], confidence: number}>}
+   * Call Supabase Edge Function for vision tasks
+   * @private
    */
-  async processHandwrittenNotes(base64Image) {
+  async _callEdgeFunction(prompt, base64Image) {
     const cleanBase64 = this._cleanBase64(base64Image)
 
-    if (!this.isConfigured) {
-      console.warn('Groq API key not configured, using demo mode')
-      return this._getDemoNotesResponse()
-    }
-
-    const prompt = this._getHandwritingPrompt()
-
     try {
-      const response = await fetch(VISION_CONFIG.groqEndpoint, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${VISION_CONFIG.groqApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: VISION_CONFIG.visionModel,
+      const { data, error } = await supabase.functions.invoke('ai-chat', {
+        body: {
           messages: [
             {
               role: 'user',
@@ -54,20 +44,35 @@ class VisionService {
               ]
             }
           ],
-          max_tokens: VISION_CONFIG.maxTokens,
-          temperature: VISION_CONFIG.temperature
-        })
+          useVision: true
+        }
       })
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error?.message || `Groq API error: ${response.status}`)
+      if (error) {
+        throw new Error(error.message || 'Edge function error')
       }
 
-      const data = await response.json()
-      const aiResponse = data.choices[0].message.content
+      if (!data || !data.message) {
+        throw new Error('Invalid response from edge function')
+      }
 
-      // Parse JSON response from AI
+      return data.message
+    } catch (error) {
+      console.error('Edge function call failed:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Process handwritten notes image into structured text
+   * @param {string} base64Image - Base64 encoded image (with or without data URL prefix)
+   * @returns {Promise<{rawText: string, formattedContent: string, title: string, subject: string, tags: string[], confidence: number}>}
+   */
+  async processHandwrittenNotes(base64Image) {
+    const prompt = this._getHandwritingPrompt()
+
+    try {
+      const aiResponse = await this._callEdgeFunction(prompt, base64Image)
       return this._parseNotesResponse(aiResponse)
     } catch (error) {
       console.error('Vision service error (handwriting):', error)
@@ -81,52 +86,10 @@ class VisionService {
    * @returns {Promise<{flashcards: Array<{front: string, back: string, hint?: string, difficulty: string}>, title: string, subject: string}>}
    */
   async processTextbookToFlashcards(base64Image) {
-    const cleanBase64 = this._cleanBase64(base64Image)
-
-    if (!this.isConfigured) {
-      console.warn('Groq API key not configured, using demo mode')
-      return this._getDemoFlashcardsResponse()
-    }
-
     const prompt = this._getFlashcardPrompt()
 
     try {
-      const response = await fetch(VISION_CONFIG.groqEndpoint, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${VISION_CONFIG.groqApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: VISION_CONFIG.visionModel,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                { type: 'text', text: prompt },
-                {
-                  type: 'image_url',
-                  image_url: {
-                    url: `data:image/jpeg;base64,${cleanBase64}`
-                  }
-                }
-              ]
-            }
-          ],
-          max_tokens: VISION_CONFIG.maxTokens,
-          temperature: 0.4 // Slightly higher for creative flashcard generation
-        })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error?.message || `Groq API error: ${response.status}`)
-      }
-
-      const data = await response.json()
-      const aiResponse = data.choices[0].message.content
-
-      // Parse JSON response from AI
+      const aiResponse = await this._callEdgeFunction(prompt, base64Image)
       return this._parseFlashcardsResponse(aiResponse)
     } catch (error) {
       console.error('Vision service error (flashcards):', error)
@@ -140,52 +103,10 @@ class VisionService {
    * @returns {Promise<{title: string, subject: string, dueDate: string, description: string, estimatedTime: string, priority: string, confidence: number}>}
    */
   async processHomeworkAssignment(base64Image) {
-    const cleanBase64 = this._cleanBase64(base64Image)
-
-    if (!this.isConfigured) {
-      console.warn('Groq API key not configured, using demo mode')
-      return this._getDemoHomeworkResponse()
-    }
-
     const prompt = this._getHomeworkPrompt()
 
     try {
-      const response = await fetch(VISION_CONFIG.groqEndpoint, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${VISION_CONFIG.groqApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: VISION_CONFIG.visionModel,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                { type: 'text', text: prompt },
-                {
-                  type: 'image_url',
-                  image_url: {
-                    url: `data:image/jpeg;base64,${cleanBase64}`
-                  }
-                }
-              ]
-            }
-          ],
-          max_tokens: VISION_CONFIG.maxTokens,
-          temperature: 0.2 // Very low for consistent extraction
-        })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error?.message || `Groq API error: ${response.status}`)
-      }
-
-      const data = await response.json()
-      const aiResponse = data.choices[0].message.content
-
-      // Parse JSON response from AI
+      const aiResponse = await this._callEdgeFunction(prompt, base64Image)
       return this._parseHomeworkResponse(aiResponse)
     } catch (error) {
       console.error('Vision service error (homework):', error)
@@ -199,49 +120,12 @@ class VisionService {
    * @returns {Promise<{text: string, confidence: number}>}
    */
   async extractText(base64Image) {
-    const cleanBase64 = this._cleanBase64(base64Image)
-
-    if (!this.isConfigured) {
-      return { text: 'Demo OCR text', confidence: 0.95 }
-    }
-
     const prompt = 'Extract all text from this image. Return only the text, preserving line breaks and formatting.'
 
     try {
-      const response = await fetch(VISION_CONFIG.groqEndpoint, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${VISION_CONFIG.groqApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: VISION_CONFIG.visionModel,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                { type: 'text', text: prompt },
-                {
-                  type: 'image_url',
-                  image_url: {
-                    url: `data:image/jpeg;base64,${cleanBase64}`
-                  }
-                }
-              ]
-            }
-          ],
-          max_tokens: 1500,
-          temperature: 0.1
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error(`Groq API error: ${response.status}`)
-      }
-
-      const data = await response.json()
+      const text = await this._callEdgeFunction(prompt, base64Image)
       return {
-        text: data.choices[0].message.content,
+        text: text,
         confidence: 0.85 // Groq doesn't provide confidence, using estimate
       }
     } catch (error) {
