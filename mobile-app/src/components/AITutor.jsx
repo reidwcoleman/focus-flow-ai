@@ -861,7 +861,7 @@ const AITutor = () => {
             {/* Pricing */}
             <div className="bg-gradient-to-r from-primary-500/10 to-accent-purple/10 rounded-xl p-4 mb-6 border border-primary-500/30">
               <div className="flex items-baseline justify-center gap-1">
-                <span className="text-3xl font-bold text-dark-text-primary">$4.99</span>
+                <span className="text-3xl font-bold text-dark-text-primary">4.99</span>
                 <span className="text-dark-text-secondary font-medium">/month</span>
               </div>
             </div>
