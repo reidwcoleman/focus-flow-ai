@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react'
 import { useStudy } from '../contexts/StudyContext'
 import StudySession from './StudySession'
+import DeckPreview from './DeckPreview'
 
 const StudyHub = () => {
   const {
@@ -19,11 +20,15 @@ const StudyHub = () => {
     getFlashcardsStats,
     refreshNotes,
     updateNote,
-    deleteNote: deleteNoteContext
+    deleteNote: deleteNoteContext,
+    updateDeck,
+    deleteDeck,
+    loadFlashcards
   } = useStudy()
 
   const [activeSection, setActiveSection] = useState('overview') // overview, allNotes, allFlashcards
   const [studySession, setStudySession] = useState(null)
+  const [deckPreview, setDeckPreview] = useState(null)
   const [selectedNote, setSelectedNote] = useState(null)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editedTitle, setEditedTitle] = useState('')
@@ -144,6 +149,70 @@ const StudyHub = () => {
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
+  }
+
+  // Deck Preview Handlers
+  const openDeckPreview = (deckId) => {
+    const deck = decks.find(d => d.id === deckId)
+    if (deck) {
+      setDeckPreview(deck)
+    }
+  }
+
+  const handleEditDeck = () => {
+    // TODO: Implement deck title edit modal (Phase 7)
+    console.log('Edit deck:', deckPreview.title)
+  }
+
+  const handleDeleteDeck = async () => {
+    if (!deckPreview) return
+
+    const confirmed = window.confirm(`Are you sure you want to delete "${deckPreview.title}"? This will delete all ${deckPreview.cardIds.length} cards in this deck.`)
+    if (confirmed) {
+      const success = await deleteDeck(deckPreview.id)
+      if (success) {
+        setDeckPreview(null)
+        await loadFlashcards()
+      }
+    }
+  }
+
+  const handleStartStudyFromPreview = async () => {
+    if (!deckPreview) return
+
+    const cards = await getCardsByDeck(deckPreview.id)
+    const dueCardsForDeck = cards.filter(card =>
+      new Date(card.nextReviewDate) <= new Date()
+    )
+
+    if (dueCardsForDeck.length > 0) {
+      setStudySession({
+        deckId: deckPreview.id,
+        cards: dueCardsForDeck,
+        title: deckPreview.title
+      })
+    } else {
+      // Study all cards if none are due
+      setStudySession({
+        deckId: deckPreview.id,
+        cards: cards,
+        title: deckPreview.title
+      })
+    }
+    setDeckPreview(null)
+  }
+
+  // Render deck preview if active
+  if (deckPreview) {
+    return (
+      <DeckPreview
+        deck={deckPreview}
+        onClose={() => setDeckPreview(null)}
+        onStartStudy={handleStartStudyFromPreview}
+        onEditDeck={handleEditDeck}
+        onDeleteDeck={handleDeleteDeck}
+      />
+    )
   }
 
   // Render study session if active
@@ -558,7 +627,7 @@ const StudyHub = () => {
               {decks.map((deck) => (
                 <div
                   key={deck.id}
-                  onClick={() => startDeckStudy(deck.id)}
+                  onClick={() => openDeckPreview(deck.id)}
                   className="flex items-center gap-3 p-4 rounded-xl bg-dark-bg-tertiary hover:bg-dark-navy-dark border border-dark-border-subtle hover:border-dark-border-glow transition-all cursor-pointer active:scale-95"
                 >
                   <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-primary-500/20 flex items-center justify-center border border-primary-500/30">
@@ -753,7 +822,7 @@ const StudyHub = () => {
             {decks.slice(0, 3).map((deck) => (
               <div
                 key={deck.id}
-                onClick={() => startDeckStudy(deck.id)}
+                onClick={() => openDeckPreview(deck.id)}
                 className="flex items-center gap-3 p-3 rounded-xl hover:bg-dark-bg-tertiary transition-all cursor-pointer active:scale-95"
               >
                 <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-primary-500/20 flex items-center justify-center border border-primary-500/30">
