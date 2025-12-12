@@ -37,7 +37,7 @@ const FlashCard = ({ card, className = '', showDifficulty = false }) => {
     <div className={`perspective-1000 ${className}`}>
       <div
         onClick={handleFlip}
-        className={`relative w-full aspect-[3/4] transition-transform duration-500 preserve-3d cursor-pointer ${
+        className={`relative w-full aspect-[4/5] sm:aspect-[3/4] transition-transform duration-500 preserve-3d cursor-pointer ${
           isFlipped ? 'rotate-y-180' : ''
         }`}
         style={{
@@ -47,7 +47,7 @@ const FlashCard = ({ card, className = '', showDifficulty = false }) => {
       >
         {/* Front Side */}
         <div
-          className="absolute inset-0 backface-hidden bg-gradient-to-br from-white to-neutral-50 rounded-3xl p-8 shadow-soft-xl border border-neutral-200/60 flex flex-col"
+          className="absolute inset-0 backface-hidden bg-gradient-to-br from-white via-white to-neutral-50/80 rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 shadow-soft-xl border border-neutral-200/60 ring-1 ring-black/5 flex flex-col"
           style={{ backfaceVisibility: 'hidden' }}
         >
           {/* Difficulty Badge */}
@@ -61,10 +61,10 @@ const FlashCard = ({ card, className = '', showDifficulty = false }) => {
 
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <div className="text-neutral-500 text-xs font-bold uppercase tracking-wider mb-3">
+              <div className="text-neutral-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-2 sm:mb-3">
                 Question
               </div>
-              <p className="text-neutral-900 text-xl font-semibold leading-relaxed">
+              <p className="text-neutral-900 text-lg sm:text-xl font-semibold leading-relaxed">
                 {card.front}
               </p>
             </div>
@@ -88,7 +88,7 @@ const FlashCard = ({ card, className = '', showDifficulty = false }) => {
 
         {/* Back Side */}
         <div
-          className="absolute inset-0 backface-hidden bg-gradient-to-br from-primary-500 to-primary-600 rounded-3xl p-8 shadow-soft-xl flex flex-col text-white"
+          className="absolute inset-0 backface-hidden bg-gradient-to-br from-primary-500 via-primary-500 to-primary-600 rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 shadow-soft-xl ring-1 ring-white/10 flex flex-col text-white"
           style={{
             backfaceVisibility: 'hidden',
             transform: 'rotateY(180deg)'
@@ -96,10 +96,10 @@ const FlashCard = ({ card, className = '', showDifficulty = false }) => {
         >
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <div className="text-white/80 text-xs font-bold uppercase tracking-wider mb-3">
+              <div className="text-white/80 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-2 sm:mb-3">
                 Answer
               </div>
-              <p className="text-white text-xl font-semibold leading-relaxed">
+              <p className="text-white text-lg sm:text-xl font-semibold leading-relaxed">
                 {card.back}
               </p>
             </div>
