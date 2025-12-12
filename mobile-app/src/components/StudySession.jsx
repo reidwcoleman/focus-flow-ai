@@ -166,91 +166,111 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
     return (
       <div className="fixed inset-0 z-50 bg-gradient-to-br from-neutral-50 via-white to-primary-50/30 flex items-center justify-center p-6">
         <div className="max-w-md w-full bg-white rounded-3xl p-8 shadow-soft-xl">
-          <div className="text-center mb-6">
-            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-glow-primary">
-              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          {/* Circular Accuracy Indicator */}
+          <div className="text-center mb-8 animate-opal-card-enter">
+            <h2 className="text-2xl font-bold text-neutral-900 mb-6">Session Complete!</h2>
+
+            {/* Circular Progress Ring */}
+            <div className="relative w-48 h-48 mx-auto mb-6">
+              <svg className="w-48 h-48 transform -rotate-90" viewBox="0 0 200 200">
+                {/* Background circle */}
+                <circle
+                  cx="100"
+                  cy="100"
+                  r="85"
+                  fill="none"
+                  stroke="#e5e7eb"
+                  strokeWidth="16"
+                />
+                {/* Accuracy arc */}
+                <circle
+                  cx="100"
+                  cy="100"
+                  r="85"
+                  fill="none"
+                  stroke={accuracy >= 80 ? '#10b981' : accuracy >= 60 ? '#f59e0b' : '#f97316'}
+                  strokeWidth="16"
+                  strokeDasharray={`${(accuracy / 100) * 534} 534`}
+                  strokeLinecap="round"
+                  className="transition-all duration-1000 ease-out"
+                  style={{
+                    filter: 'drop-shadow(0 0 8px rgba(124, 92, 255, 0.3))'
+                  }}
+                />
               </svg>
-            </div>
-            <h2 className="text-2xl font-bold text-neutral-900 mb-2">Session Complete!</h2>
-            <p className="text-neutral-600">Great job studying today</p>
-          </div>
-
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <div className="bg-green-50 rounded-xl p-4 text-center">
-              <div className="text-3xl font-bold text-green-600">{sessionStats.mastered}</div>
-              <div className="text-xs text-green-600 font-semibold">Mastered</div>
-              <div className="text-[10px] text-green-500 mt-1">Swiped Right ✓</div>
-            </div>
-            <div className="bg-amber-50 rounded-xl p-4 text-center">
-              <div className="text-3xl font-bold text-amber-600">{sessionStats.needsWork}</div>
-              <div className="text-xs text-amber-600 font-semibold">Needs Work</div>
-              <div className="text-[10px] text-amber-500 mt-1">Swiped Left ↻</div>
-            </div>
-          </div>
-
-          {/* Performance Stats */}
-          <div className="space-y-3 mb-6">
-            {/* Accuracy */}
-            <div className="bg-neutral-50 rounded-xl p-3">
-              <div className="flex items-center justify-between">
-                <span className="text-neutral-600 text-sm">Accuracy</span>
-                <span className={`text-lg font-bold ${accuracy >= 80 ? 'text-green-600' : accuracy >= 60 ? 'text-yellow-600' : 'text-amber-600'}`}>
+              {/* Center text */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <div className={`text-5xl font-bold ${accuracy >= 80 ? 'text-green-600' : accuracy >= 60 ? 'text-amber-600' : 'text-orange-600'}`}>
                   {accuracy}%
+                </div>
+                <div className="text-sm text-neutral-500 font-semibold mt-1">Accuracy</div>
+              </div>
+            </div>
+
+            {/* Mastered vs Needs Work */}
+            <div className="flex items-center justify-center gap-6 mb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                <span className="text-sm text-neutral-600">
+                  <span className="font-bold text-green-600">{sessionStats.mastered}</span> Mastered
                 </span>
               </div>
-              <div className="mt-2 h-2 bg-neutral-200 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${accuracy >= 80 ? 'bg-green-500' : accuracy >= 60 ? 'bg-yellow-500' : 'bg-amber-500'}`}
-                  style={{ width: `${accuracy}%` }}
-                ></div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+                <span className="text-sm text-neutral-600">
+                  <span className="font-bold text-amber-600">{sessionStats.needsWork}</span> Needs Work
+                </span>
               </div>
+            </div>
+          </div>
+
+          {/* Simplified 3-Stat Row with Staggered Animation */}
+          <div className="grid grid-cols-3 gap-3 mb-6">
+            {/* Duration */}
+            <div
+              className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-xl p-4 text-center animate-opal-card-enter"
+              style={{ animationDelay: '0.1s' }}
+            >
+              <div className="text-xs text-blue-600 font-bold uppercase tracking-wide mb-1">Duration</div>
+              <div className="text-xl font-bold text-blue-700">
+                {sessionMinutes}:{sessionSeconds.toString().padStart(2, '0')}
+              </div>
+            </div>
+
+            {/* Avg/Card */}
+            <div
+              className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 rounded-xl p-4 text-center animate-opal-card-enter"
+              style={{ animationDelay: '0.2s' }}
+            >
+              <div className="text-xs text-indigo-600 font-bold uppercase tracking-wide mb-1">Avg/Card</div>
+              <div className="text-xl font-bold text-indigo-700">{avgCardTime}s</div>
             </div>
 
             {/* Best Streak */}
-            {bestStreak > 0 && (
-              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-purple-600 text-sm font-semibold">🔥 Best Streak</span>
-                  <span className="text-2xl font-bold text-purple-600">{bestStreak}</span>
-                </div>
-              </div>
-            )}
-
-            {/* Session Metrics Grid */}
-            <div className="grid grid-cols-3 gap-2">
-              {/* Session Duration */}
-              <div className="bg-blue-50 rounded-xl p-3 text-center">
-                <div className="text-xs text-blue-600 font-semibold mb-1">Time</div>
-                <div className="text-lg font-bold text-blue-600">
-                  {sessionMinutes}:{sessionSeconds.toString().padStart(2, '0')}
-                </div>
-              </div>
-
-              {/* Avg Time per Card */}
-              <div className="bg-indigo-50 rounded-xl p-3 text-center">
-                <div className="text-xs text-indigo-600 font-semibold mb-1">Avg/Card</div>
-                <div className="text-lg font-bold text-indigo-600">{avgCardTime}s</div>
-              </div>
-
-              {/* Speed */}
-              <div className="bg-violet-50 rounded-xl p-3 text-center">
-                <div className="text-xs text-violet-600 font-semibold mb-1">Speed</div>
-                <div className="text-lg font-bold text-violet-600">{cardsPerMinute}/min</div>
-              </div>
-            </div>
-
-            {/* Total */}
-            <div className="bg-neutral-50 rounded-xl p-3 text-center">
-              <span className="text-neutral-600 text-sm">
-                <span className="font-bold text-neutral-900">{cards.length}</span> cards reviewed
-              </span>
+            <div
+              className="bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-xl p-4 text-center animate-opal-card-enter"
+              style={{ animationDelay: '0.3s' }}
+            >
+              <div className="text-xs text-purple-600 font-bold uppercase tracking-wide mb-1">Best 🔥</div>
+              <div className="text-xl font-bold text-purple-700">{bestStreak || 0}</div>
             </div>
           </div>
 
+          {/* Total Cards */}
+          <div
+            className="bg-neutral-50 rounded-xl p-3 text-center mb-6 animate-opal-card-enter"
+            style={{ animationDelay: '0.4s' }}
+          >
+            <span className="text-neutral-600 text-sm">
+              <span className="font-bold text-neutral-900">{cards.length}</span> cards reviewed
+            </span>
+          </div>
+
           {/* Actions */}
-          <div className="space-y-3">
+          <div
+            className="space-y-3 animate-opal-card-enter"
+            style={{ animationDelay: '0.5s' }}
+          >
             {missedCards.length > 0 && (
               <button
                 onClick={reviewMissedCards}
