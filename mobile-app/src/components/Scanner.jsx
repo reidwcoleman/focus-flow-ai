@@ -88,22 +88,12 @@ const Scanner = ({ onClose, onCapture, initialScanMode = 'homework' }) => {
 
     try {
       if (scanMode === 'homework') {
-        // Existing homework mode - keep mock for now
-        setProcessingStep('Analyzing assignment...')
-        await new Promise(resolve => setTimeout(resolve, 2000))
+        // Process homework with AI vision
+        setProcessingStep('Analyzing assignment with AI vision...')
+        const result = await visionService.processHomeworkAssignment(imageData)
 
-        const mockData = {
-          title: 'Chemistry Lab Report: Acid-Base Titration',
-          subject: 'Chemistry',
-          dueDate: '2025-12-15',
-          description: 'Complete lab report analyzing the titration of HCl with NaOH. Include calculations, observations, and error analysis.',
-          estimatedTime: '2h 30m',
-          priority: 'high',
-          confidence: 0.95,
-        }
-
-        setExtractedText('📝 Assignment detected!\n\nTitle: Chemistry Lab Report\nDue: December 15, 2025\nSubject: Chemistry\n\nDescription: Complete lab report analyzing the titration of HCl with NaOH...')
-        setAssignmentData(mockData)
+        setAssignmentData(result)
+        setExtractedText(`📝 Assignment detected!\n\nTitle: ${result.title}\nDue: ${result.dueDate ? new Date(result.dueDate).toLocaleDateString() : 'Not specified'}\nSubject: ${result.subject}\n\nDescription: ${result.description}`)
       } else if (scanMode === 'notes') {
         // Process handwritten notes
         setProcessingStep('Reading handwriting...')
