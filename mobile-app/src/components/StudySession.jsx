@@ -10,6 +10,8 @@ import FlashCard from './FlashCard'
 const StudySession = ({ deckId, cards, onComplete, onExit }) => {
   const { recordCardReview } = useStudy()
 
+  // Use activeCards to allow resetting session with missed cards
+  const [activeCards, setActiveCards] = useState(cards)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [sessionStats, setSessionStats] = useState({
     needsWork: 0,
@@ -33,8 +35,8 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
   const dragStartX = useRef(0)
   const cardRef = useRef(null)
 
-  const currentCard = cards[currentIndex]
-  const progress = ((currentIndex + 1) / cards.length) * 100
+  const currentCard = activeCards[currentIndex]
+  const progress = ((currentIndex + 1) / activeCards.length) * 100
 
   // Touch/Mouse event handlers for swipe gestures
   const handleDragStart = (clientX) => {
@@ -115,7 +117,7 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
     }))
 
     // Move to next card or complete
-    if (currentIndex < cards.length - 1) {
+    if (currentIndex < activeCards.length - 1) {
       setCurrentIndex(currentIndex + 1)
     } else {
       setShowComplete(true)
@@ -123,16 +125,19 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
   }
 
   const reviewMissedCards = () => {
-    // Start a new session with only the missed cards
+    // Reset session with only the missed cards
     if (missedCards.length > 0) {
-      // Create a new session by updating parent component
-      onComplete?.()
-      // Note: In a production app, we'd pass the missed cards back to start a new session
-      // For now, user can close and select the deck again
+      setActiveCards([...missedCards])
+      setCurrentIndex(0)
+      setSessionStats({ needsWork: 0, mastered: 0 })
+      setMissedCards([])
+      setShowComplete(false)
+      setStreak(0)
+      setCardStartTime(Date.now())
     }
   }
 
-  const accuracy = cards.length > 0 ? Math.round((sessionStats.mastered / cards.length) * 100) : 0
+  const accuracy = activeCards.length > 0 ? Math.round((sessionStats.mastered / activeCards.length) * 100) : 0
 
   // Calculate session metrics
   const sessionDuration = Date.now() - sessionStartTime

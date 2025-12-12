@@ -14,6 +14,7 @@ const AuthScreen = ({ onAuthSuccess }) => {
   const [showCanvasSetup, setShowCanvasSetup] = useState(false)
   const [canvasUrl, setCanvasUrl] = useState('')
   const [canvasToken, setCanvasToken] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -22,29 +23,50 @@ const AuthScreen = ({ onAuthSuccess }) => {
     setLoading(true)
     setError(null)
 
+    console.log('🔐 Auth attempt:', { isSignUp, email, hasPassword: !!password })
+
+    // Validate inputs
+    if (!email || !email.trim()) {
+      setError('Email is required')
+      setLoading(false)
+      return
+    }
+
+    if (!password || password.length < 6) {
+      setError('Password must be at least 6 characters')
+      setLoading(false)
+      return
+    }
+
     try {
       let result
       if (isSignUp) {
+        console.log('📝 Signing up...')
         // Prepare profile data for signup
         const profileData = {
           full_name: fullName.trim() || null,
           canvas_url: canvasUrl.trim() || null,
           canvas_token: canvasToken.trim() || null,
         }
-        result = await authService.signUp(email, password, profileData)
+        result = await authService.signUp(email.trim(), password, profileData)
       } else {
-        result = await authService.signIn(email, password)
+        console.log('🔑 Signing in...')
+        result = await authService.signIn(email.trim(), password)
       }
 
+      console.log('📊 Auth result:', { success: !result.error, error: result.error?.message })
+
       if (result.error) {
-        setError(result.error.message)
+        setError(result.error.message || 'Authentication failed')
       } else {
         // Success!
+        console.log('✅ Auth successful!')
         if (onAuthSuccess) {
           onAuthSuccess(result.user)
         }
       }
     } catch (err) {
+      console.error('❌ Auth exception:', err)
       setError(err.message || 'Authentication failed')
     } finally {
       setLoading(false)
@@ -93,6 +115,7 @@ const AuthScreen = ({ onAuthSuccess }) => {
               onChange={(e) => setEmail(e.target.value)}
               required
               placeholder="you@example.com"
+              autoComplete="email"
               className="w-full px-4 py-3 rounded-xl bg-dark-bg-tertiary border border-dark-border-glow text-dark-text-primary placeholder:text-dark-text-muted focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
             />
           </div>
@@ -100,15 +123,35 @@ const AuthScreen = ({ onAuthSuccess }) => {
           {/* Password Input */}
           <div>
             <label className="block text-dark-text-primary text-sm font-semibold mb-2">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="••••••••"
-              minLength={6}
-              className="w-full px-4 py-3 rounded-xl bg-dark-bg-tertiary border border-dark-border-glow text-dark-text-primary placeholder:text-dark-text-muted focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                placeholder="••••••••"
+                minLength={6}
+                autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                className="w-full px-4 py-3 pr-12 rounded-xl bg-dark-bg-tertiary border border-dark-border-glow text-dark-text-primary placeholder:text-dark-text-muted focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-dark-text-muted hover:text-dark-text-primary transition-colors"
+              >
+                {showPassword ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                )}
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-dark-text-muted">At least 6 characters</p>
           </div>
 
           {/* Canvas Integration Toggle - Only for Sign Up */}
