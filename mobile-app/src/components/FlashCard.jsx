@@ -47,7 +47,7 @@ const FlashCard = ({ card, className = '', showDifficulty = false }) => {
       >
         {/* Front Side */}
         <div
-          className="absolute inset-0 backface-hidden bg-gradient-to-br from-white via-white to-neutral-50/80 rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 shadow-soft-xl border border-neutral-200/60 ring-1 ring-black/5 flex flex-col"
+          className="absolute inset-0 backface-hidden bg-gradient-to-br from-dark-bg-secondary via-dark-bg-secondary to-dark-bg-tertiary rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 shadow-dark-soft-md border border-dark-border-glow ring-1 ring-white/5 flex flex-col"
           style={{ backfaceVisibility: 'hidden' }}
         >
           {/* Difficulty Badge */}
@@ -61,10 +61,10 @@ const FlashCard = ({ card, className = '', showDifficulty = false }) => {
 
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <div className="text-neutral-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-2 sm:mb-3">
+              <div className="text-dark-text-secondary text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-2 sm:mb-3">
                 Question
               </div>
-              <p className="text-neutral-900 text-lg sm:text-xl font-semibold leading-relaxed">
+              <p className="text-dark-text-primary text-lg sm:text-xl font-semibold leading-relaxed">
                 {card.front}
               </p>
             </div>
@@ -73,12 +73,12 @@ const FlashCard = ({ card, className = '', showDifficulty = false }) => {
           {/* Hint Badge */}
           {card.hint && (
             <div className="mt-4 px-3 py-2 rounded-xl bg-yellow-500/10 border border-yellow-500/30">
-              <span className="text-yellow-600 text-xs">💡 Hint available</span>
+              <span className="text-yellow-400 text-xs">💡 Hint available</span>
             </div>
           )}
 
           {/* Flip Indicator */}
-          <div className="mt-4 flex items-center justify-center gap-2 text-neutral-400">
+          <div className="mt-4 flex items-center justify-center gap-2 text-dark-text-muted">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
             </svg>

@@ -164,11 +164,11 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
 
   if (!currentCard || showComplete) {
     return (
-      <div className="fixed inset-0 z-50 bg-gradient-to-br from-neutral-50 via-white to-primary-50/30 flex items-center justify-center p-6">
-        <div className="max-w-md w-full bg-white rounded-3xl p-8 shadow-soft-xl">
+      <div className="fixed inset-0 z-50 bg-dark-bg flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-dark-bg-secondary rounded-3xl p-8 shadow-dark-soft-xl border border-dark-border-glow">
           {/* Circular Accuracy Indicator */}
           <div className="text-center mb-8 animate-opal-card-enter">
-            <h2 className="text-2xl font-bold text-neutral-900 mb-6">Session Complete!</h2>
+            <h2 className="text-2xl font-bold text-dark-text-primary mb-6">Session Complete!</h2>
 
             {/* Circular Progress Ring */}
             <div className="relative w-48 h-48 mx-auto mb-6">
@@ -203,7 +203,7 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
                 <div className={`text-5xl font-bold ${accuracy >= 80 ? 'text-green-600' : accuracy >= 60 ? 'text-amber-600' : 'text-orange-600'}`}>
                   {accuracy}%
                 </div>
-                <div className="text-sm text-neutral-500 font-semibold mt-1">Accuracy</div>
+                <div className="text-sm text-dark-text-secondary font-semibold mt-1">Accuracy</div>
               </div>
             </div>
 
@@ -211,14 +211,14 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
             <div className="flex items-center justify-center gap-6 mb-2">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                <span className="text-sm text-neutral-600">
-                  <span className="font-bold text-green-600">{sessionStats.mastered}</span> Mastered
+                <span className="text-sm text-dark-text-secondary">
+                  <span className="font-bold text-green-500">{sessionStats.mastered}</span> Mastered
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-amber-500"></div>
-                <span className="text-sm text-neutral-600">
-                  <span className="font-bold text-amber-600">{sessionStats.needsWork}</span> Needs Work
+                <span className="text-sm text-dark-text-secondary">
+                  <span className="font-bold text-amber-500">{sessionStats.needsWork}</span> Needs Work
                 </span>
               </div>
             </div>
@@ -228,41 +228,41 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
           <div className="grid grid-cols-3 gap-3 mb-6">
             {/* Duration */}
             <div
-              className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-xl p-4 text-center animate-opal-card-enter"
+              className="bg-gradient-to-br from-blue-900/20 to-blue-800/20 rounded-xl p-4 text-center animate-opal-card-enter border border-blue-500/20"
               style={{ animationDelay: '0.1s' }}
             >
-              <div className="text-xs text-blue-600 font-bold uppercase tracking-wide mb-1">Duration</div>
-              <div className="text-xl font-bold text-blue-700">
+              <div className="text-xs text-blue-400 font-bold uppercase tracking-wide mb-1">Duration</div>
+              <div className="text-xl font-bold text-blue-300">
                 {sessionMinutes}:{sessionSeconds.toString().padStart(2, '0')}
               </div>
             </div>
 
             {/* Avg/Card */}
             <div
-              className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 rounded-xl p-4 text-center animate-opal-card-enter"
+              className="bg-gradient-to-br from-indigo-900/20 to-indigo-800/20 rounded-xl p-4 text-center animate-opal-card-enter border border-indigo-500/20"
               style={{ animationDelay: '0.2s' }}
             >
-              <div className="text-xs text-indigo-600 font-bold uppercase tracking-wide mb-1">Avg/Card</div>
-              <div className="text-xl font-bold text-indigo-700">{avgCardTime}s</div>
+              <div className="text-xs text-indigo-400 font-bold uppercase tracking-wide mb-1">Avg/Card</div>
+              <div className="text-xl font-bold text-indigo-300">{avgCardTime}s</div>
             </div>
 
             {/* Best Streak */}
             <div
-              className="bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-xl p-4 text-center animate-opal-card-enter"
+              className="bg-gradient-to-br from-purple-900/20 to-purple-800/20 rounded-xl p-4 text-center animate-opal-card-enter border border-purple-500/20"
               style={{ animationDelay: '0.3s' }}
             >
-              <div className="text-xs text-purple-600 font-bold uppercase tracking-wide mb-1">Best 🔥</div>
-              <div className="text-xl font-bold text-purple-700">{bestStreak || 0}</div>
+              <div className="text-xs text-purple-400 font-bold uppercase tracking-wide mb-1">Best 🔥</div>
+              <div className="text-xl font-bold text-purple-300">{bestStreak || 0}</div>
             </div>
           </div>
 
           {/* Total Cards */}
           <div
-            className="bg-neutral-50 rounded-xl p-3 text-center mb-6 animate-opal-card-enter"
+            className="bg-dark-bg-tertiary rounded-xl p-3 text-center mb-6 animate-opal-card-enter border border-dark-border-subtle"
             style={{ animationDelay: '0.4s' }}
           >
-            <span className="text-neutral-600 text-sm">
-              <span className="font-bold text-neutral-900">{cards.length}</span> cards reviewed
+            <span className="text-dark-text-secondary text-sm">
+              <span className="font-bold text-dark-text-primary">{cards.length}</span> cards reviewed
             </span>
           </div>
 
@@ -293,7 +293,7 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-gradient-to-br from-neutral-50 via-white to-primary-50/30">
+    <div className="fixed inset-0 z-50 bg-dark-bg">
       {/* Confetti Celebration */}
       {showConfetti && (
         <div className="absolute inset-0 pointer-events-none z-50 overflow-hidden">
@@ -318,14 +318,14 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
       )}
 
       {/* Header */}
-      <div className="absolute top-0 left-0 right-0 z-10 bg-white/80 backdrop-blur-md border-b border-neutral-200/60 safe-area-inset-top">
+      <div className="absolute top-0 left-0 right-0 z-10 bg-dark-bg-secondary/80 backdrop-blur-md border-b border-dark-border-glow safe-area-inset-top">
         <div className="max-w-md mx-auto px-5 py-4">
           <div className="flex items-center justify-between mb-3">
             <button
               onClick={onExit}
-              className="w-10 h-10 rounded-full hover:bg-neutral-100 flex items-center justify-center transition-all active:scale-95"
+              className="w-10 h-10 rounded-full hover:bg-dark-bg-tertiary flex items-center justify-center transition-all active:scale-95"
             >
-              <svg className="w-6 h-6 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-dark-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -340,7 +340,7 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
               </div>
             )}
 
-            <div className="text-sm font-semibold text-neutral-600">
+            <div className="text-sm font-semibold text-dark-text-primary">
               {currentIndex + 1} / {cards.length}
             </div>
             <div className="w-10" /> {/* Spacer */}
