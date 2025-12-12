@@ -6,7 +6,8 @@ export default defineConfig({
   plugins: [react()],
   base: '/focus-flow-ai/',
   build: {
-    outDir: 'dist',
+    outDir: '../docs',
     assetsDir: 'assets',
+    emptyOutDir: true,
   },
 })
