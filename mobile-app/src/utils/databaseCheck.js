@@ -13,6 +13,7 @@ export const checkDatabaseTables = async () => {
     'blocking_sessions',
     'blocking_lists',
     'scheduled_blocks',
+    'streak_history',
   ]
 
   const results = {}
@@ -59,11 +60,12 @@ export const printDatabaseStatus = async () => {
 
   if (missingTables.length > 0) {
     console.error('❌ Missing tables:', missingTables)
-    console.error('👉 Please run COMPLETE_DATABASE_MIGRATION.sql in Supabase!')
+    console.error('👉 Please run COMPLETE_DATABASE_MIGRATION_V3.sql in Supabase!')
     console.error('👉 URL: https://supabase.com/dashboard/project/uhlgppoylqeiirpfhhqm/sql')
     return false
   } else {
     console.log('✅ All tables exist!')
+    console.log('🔥 Streak calendar will now show your real login history!')
     return true
   }
 }
