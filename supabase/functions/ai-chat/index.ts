@@ -77,8 +77,8 @@ serve(async (req) => {
     // Add conversation messages
     groqMessages.push(...messages)
 
-    // Select model based on whether vision is needed
-    const model = useVision ? 'llama-3.2-90b-vision-preview' : 'llama-3.3-70b-versatile'
+    // Select model based on whether vision is needed (same model as scanner feature)
+    const model = useVision ? 'meta-llama/llama-4-scout-17b-16e-instruct' : 'llama-3.3-70b-versatile'
     const maxTokens = useVision ? 800 : 300 // More tokens for vision responses
 
     console.log('🔍 Using model:', model, 'Vision:', useVision)

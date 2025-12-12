@@ -590,8 +590,8 @@ When students ask:
         }
       })
 
-      // Use vision model if image is provided
-      const modelToUse = imageData ? 'llama-3.2-90b-vision-preview' : 'llama-3.3-70b-versatile'
+      // Use vision model if image is provided (same as scanner)
+      const modelToUse = imageData ? 'meta-llama/llama-4-scout-17b-16e-instruct' : 'llama-3.3-70b-versatile'
 
       console.log('🔍 Using model:', modelToUse)
       console.log('📨 Sending to AI:', {
