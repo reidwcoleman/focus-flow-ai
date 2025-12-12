@@ -428,8 +428,10 @@ When students ask:
 
   /**
    * Send message via Supabase Edge Function (RECOMMENDED)
+   * @param {string} userMessage - The user's text message
+   * @param {string} imageData - Optional base64 image data
    */
-  async sendViaBackend(userMessage) {
+  async sendViaBackend(userMessage, imageData = null) {
     if (!AI_CONFIG.edgeFunctionUrl) {
       throw new Error('Supabase URL not configured. Add VITE_SUPABASE_URL to .env')
     }
@@ -439,13 +441,55 @@ When students ask:
       await this.loadUserContext()
     }
 
-    // Add user message to history
+    // Add user message to history (text only for history)
     this.conversationHistory.push({
       role: 'user',
-      content: userMessage,
+      content: userMessage || '📷 [Image]',
     })
 
     try {
+      // Build messages array for API
+      const messagesForAPI = []
+
+      // Add conversation history (last 10 messages)
+      const recentHistory = this.conversationHistory.slice(-10)
+
+      recentHistory.forEach((msg, idx) => {
+        // If this is the last message (the one we just added) and we have an image
+        if (idx === recentHistory.length - 1 && imageData && msg.role === 'user') {
+          // Clean base64 data - preserve original format or default to jpeg
+          let imageUrl = imageData
+          if (!imageData.startsWith('data:image/')) {
+            imageUrl = `data:image/jpeg;base64,${imageData}`
+          }
+
+          // Build multimodal content for vision model
+          const visionContent = [
+            {
+              type: 'text',
+              text: userMessage || 'Please analyze this image, read any text in it, solve any problems shown, and help me understand what it contains.'
+            },
+            {
+              type: 'image_url',
+              image_url: { url: imageUrl }
+            }
+          ]
+
+          messagesForAPI.push({
+            role: 'user',
+            content: visionContent
+          })
+        } else {
+          // Regular text message
+          messagesForAPI.push({
+            role: msg.role,
+            content: msg.content
+          })
+        }
+      })
+
+      console.log('🔍 Sending to backend with image:', !!imageData)
+
       const response = await fetch(AI_CONFIG.edgeFunctionUrl, {
         method: 'POST',
         headers: {
@@ -454,8 +498,9 @@ When students ask:
           'apikey': AI_CONFIG.anonKey,
         },
         body: JSON.stringify({
-          messages: this.conversationHistory.slice(-10), // Last 10 messages
+          messages: messagesForAPI,
           systemPrompt: this.getSystemPrompt(),
+          useVision: !!imageData, // Tell backend to use vision model
         }),
       })
 
@@ -496,17 +541,6 @@ When students ask:
       await this.loadUserContext()
     }
 
-    // Build user message content
-    let userContent = userMessage
-    if (imageData) {
-      // For vision requests, use multimodal format
-      const base64Image = imageData.replace(/^data:image\/\w+;base64,/, '')
-      userContent = [
-        { type: 'text', text: userMessage || 'Analyze this image and help me solve any problems or answer questions about it.' },
-        { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64Image}` } }
-      ]
-    }
-
     // Add user message to history (text only for history)
     this.conversationHistory.push({
       role: 'user',
@@ -514,22 +548,57 @@ When students ask:
     })
 
     try {
-      // Build messages array
-      const conversationMessages = this.conversationHistory.slice(-10).map((msg, idx) => {
-        // Only apply image to the last user message
-        if (idx === this.conversationHistory.slice(-10).length - 1 && msg.role === 'user' && imageData) {
-          return { role: msg.role, content: userContent }
-        }
-        return { role: msg.role, content: msg.content }
-      })
-
-      const messages = [
-        { role: 'system', content: this.getSystemPrompt() },
-        ...conversationMessages,
+      // Build messages array for API
+      const messagesForAPI = [
+        { role: 'system', content: this.getSystemPrompt() }
       ]
+
+      // Add conversation history (last 10 messages)
+      const recentHistory = this.conversationHistory.slice(-10)
+
+      recentHistory.forEach((msg, idx) => {
+        // If this is the last message (the one we just added) and we have an image
+        if (idx === recentHistory.length - 1 && imageData && msg.role === 'user') {
+          // Clean base64 data - preserve original format or default to jpeg
+          let imageUrl = imageData
+          if (!imageData.startsWith('data:image/')) {
+            imageUrl = `data:image/jpeg;base64,${imageData}`
+          }
+
+          // Build multimodal content for vision model
+          const visionContent = [
+            {
+              type: 'text',
+              text: userMessage || 'Please analyze this image, read any text in it, solve any problems shown, and help me understand what it contains.'
+            },
+            {
+              type: 'image_url',
+              image_url: { url: imageUrl }
+            }
+          ]
+
+          messagesForAPI.push({
+            role: 'user',
+            content: visionContent
+          })
+        } else {
+          // Regular text message
+          messagesForAPI.push({
+            role: msg.role,
+            content: msg.content
+          })
+        }
+      })
 
       // Use vision model if image is provided
       const modelToUse = imageData ? 'llama-3.2-90b-vision-preview' : 'llama-3.3-70b-versatile'
+
+      console.log('🔍 Using model:', modelToUse)
+      console.log('📨 Sending to AI:', {
+        hasImage: !!imageData,
+        messageCount: messagesForAPI.length,
+        lastMessage: messagesForAPI[messagesForAPI.length - 1]
+      })
 
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
@@ -539,9 +608,9 @@ When students ask:
         },
         body: JSON.stringify({
           model: modelToUse,
-          messages: messages,
+          messages: messagesForAPI,
           temperature: 0.7,
-          max_tokens: imageData ? 500 : 300, // More tokens for vision responses
+          max_tokens: imageData ? 800 : 300, // More tokens for vision responses
           top_p: 1,
         }),
       })
