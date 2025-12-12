@@ -285,6 +285,12 @@ const AITutor = () => {
 
   const formatMessageContent = (content) => {
     // Enhanced markdown parser with beautiful styling
+
+    // First, handle display math blocks ($$...$$) before line splitting
+    content = content.replace(/\$\$([^\$]+)\$\$/g, (match, mathContent) => {
+      return '\n<div class="my-3 p-3 bg-dark-bg-tertiary rounded-lg border border-dark-border-subtle text-center"><span class="italic text-dark-text-primary font-serif text-base">' + mathContent.trim() + '</span></div>\n'
+    })
+
     const lines = content.split('\n')
     const formatted = []
     let inCodeBlock = false
@@ -366,6 +372,12 @@ const AITutor = () => {
 
   // Process inline formatting (bold, italic, code, etc)
   const processInlineFormatting = (text) => {
+    // LaTeX inline math ($...$) - render as italicized math or strip $ signs
+    // This handles expressions like $x$, $x + y$, etc.
+    text = text.replace(/\$([^\$]+)\$/g, (match, mathContent) => {
+      return '<span class="italic text-dark-text-primary font-serif">' + mathContent + '</span>'
+    })
+
     // Inline code (`code`) - use function to avoid $ interpretation issues
     text = text.replace(/`([^`]+)`/g, (match, code) => {
       return '<code class="px-1.5 py-0.5 rounded bg-dark-bg-tertiary text-accent-cyan font-mono text-[13px] border border-dark-border-subtle">' + code + '</code>'

@@ -34,6 +34,9 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
   const [cardStartTime, setCardStartTime] = useState(Date.now())
   const [cardTimes, setCardTimes] = useState([])
 
+  // Track results for each card for color-coded progress bar
+  const [cardResults, setCardResults] = useState([])
+
   const dragStartX = useRef(0)
   const cardRef = useRef(null)
 
@@ -101,6 +104,9 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
       setMissedCards(prev => [...prev, currentCard])
     }
 
+    // Track card result for progress bar (mastered=green, needsWork=amber)
+    setCardResults(prev => [...prev, rating >= 5 ? 'mastered' : 'needsWork'])
+
     // Update streak
     if (rating >= 5) {
       const newStreak = streak + 1
@@ -143,6 +149,7 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
       setShowComplete(false)
       setStreak(0)
       setCardStartTime(Date.now())
+      setCardResults([]) // Reset progress bar results
     }
   }
 
@@ -319,12 +326,34 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
             <div className="w-10" /> {/* Spacer */}
           </div>
 
-          {/* Progress Bar */}
-          <div className="h-2 bg-neutral-200 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-primary-500 to-primary-600 rounded-full transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            ></div>
+          {/* Color-Coded Segmented Progress Bar */}
+          <div className="flex gap-0.5">
+            {activeCards.map((_, index) => {
+              const isCompleted = index < currentIndex
+              const isCurrent = index === currentIndex
+              const isPending = index > currentIndex
+
+              // Determine segment color
+              let segmentClass = 'bg-neutral-200' // Default for pending cards
+              if (isCompleted && cardResults[index] === 'mastered') {
+                segmentClass = 'bg-green-500'
+              } else if (isCompleted && cardResults[index] === 'needsWork') {
+                segmentClass = 'bg-amber-500'
+              } else if (isCurrent) {
+                segmentClass = 'bg-primary-500 animate-pulse'
+              }
+
+              return (
+                <div
+                  key={index}
+                  className={`h-2 flex-1 rounded-full transition-all duration-300 ${segmentClass}`}
+                  style={{
+                    minWidth: '4px',
+                    boxShadow: isCurrent ? '0 0 8px rgba(124, 92, 255, 0.6)' : 'none'
+                  }}
+                />
+              )
+            })}
           </div>
         </div>
       </div>
