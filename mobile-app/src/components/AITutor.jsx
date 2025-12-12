@@ -299,35 +299,35 @@ const AITutor = () => {
       }
 
       if (inCodeBlock) {
-        formatted.push(`<div class="bg-dark-bg-tertiary rounded-lg px-3 py-2 my-2 font-mono text-[13px] text-accent-cyan border border-dark-border-subtle">${line}</div>`)
+        formatted.push('<div class="bg-dark-bg-tertiary rounded-lg px-3 py-2 my-2 font-mono text-[13px] text-accent-cyan border border-dark-border-subtle">' + line + '</div>')
         continue
       }
 
       // H1 headers (# Text)
       if (line.match(/^#\s+(.+)$/)) {
         const text = line.replace(/^#\s+/, '')
-        formatted.push(`<div class="text-[17px] font-bold text-dark-text-primary mt-4 mb-2 pb-2 border-b border-dark-border-subtle">${text}</div>`)
+        formatted.push('<div class="text-[17px] font-bold text-dark-text-primary mt-4 mb-2 pb-2 border-b border-dark-border-subtle">' + text + '</div>')
         continue
       }
 
       // H2 headers (## Text)
       if (line.match(/^##\s+(.+)$/)) {
         const text = line.replace(/^##\s+/, '')
-        formatted.push(`<div class="text-[16px] font-bold text-dark-text-primary mt-3 mb-2">${text}</div>`)
+        formatted.push('<div class="text-[16px] font-bold text-dark-text-primary mt-3 mb-2">' + text + '</div>')
         continue
       }
 
       // H3 headers (### Text)
       if (line.match(/^###\s+(.+)$/)) {
         const text = line.replace(/^###\s+/, '')
-        formatted.push(`<div class="text-[15px] font-semibold text-dark-text-primary mt-3 mb-1">${text}</div>`)
+        formatted.push('<div class="text-[15px] font-semibold text-dark-text-primary mt-3 mb-1">' + text + '</div>')
         continue
       }
 
       // Headers with colons (WORD: or **WORD:**)
       if (line.match(/^(\*\*)?[A-Z][A-Za-z\s]+(\*\*)?:$/)) {
         const text = line.replace(/\*\*/g, '').replace(/:$/, '')
-        formatted.push(`<div class="text-[15px] font-bold text-primary-400 mt-3 mb-1.5">${text}</div>`)
+        formatted.push('<div class="text-[15px] font-bold text-primary-400 mt-3 mb-1.5">' + text + '</div>')
         continue
       }
 
@@ -336,7 +336,7 @@ const AITutor = () => {
         let text = line.trim().replace(/^[-*]\s+/, '')
         // Process inline formatting
         text = processInlineFormatting(text)
-        formatted.push(`<div class="flex gap-2 my-1.5 ml-2"><span class="text-primary-400 flex-shrink-0 mt-0.5">•</span><span class="flex-1">${text}</span></div>`)
+        formatted.push('<div class="flex gap-2 my-1.5 ml-2"><span class="text-primary-400 flex-shrink-0 mt-0.5">•</span><span class="flex-1">' + text + '</span></div>')
         continue
       }
 
@@ -346,19 +346,19 @@ const AITutor = () => {
         let text = match[2]
         const number = match[1]
         text = processInlineFormatting(text)
-        formatted.push(`<div class="flex gap-2 my-1.5 ml-2"><span class="text-primary-400 flex-shrink-0 font-semibold min-w-[20px]">${number}.</span><span class="flex-1">${text}</span></div>`)
+        formatted.push('<div class="flex gap-2 my-1.5 ml-2"><span class="text-primary-400 flex-shrink-0 font-semibold min-w-[20px]">' + number + '.</span><span class="flex-1">' + text + '</span></div>')
         continue
       }
 
       // Empty lines create spacing
       if (line.trim() === '') {
-        formatted.push(`<div class="h-2"></div>`)
+        formatted.push('<div class="h-2"></div>')
         continue
       }
 
       // Regular paragraphs
       line = processInlineFormatting(line)
-      formatted.push(`<div class="my-1.5 leading-relaxed">${line}</div>`)
+      formatted.push('<div class="my-1.5 leading-relaxed">' + line + '</div>')
     }
 
     return formatted.join('')
@@ -366,21 +366,33 @@ const AITutor = () => {
 
   // Process inline formatting (bold, italic, code, etc)
   const processInlineFormatting = (text) => {
-    // Inline code (`code`)
-    text = text.replace(/`([^`]+)`/g, '<code class="px-1.5 py-0.5 rounded bg-dark-bg-tertiary text-accent-cyan font-mono text-[13px] border border-dark-border-subtle">$1</code>')
+    // Inline code (`code`) - use function to avoid $ interpretation issues
+    text = text.replace(/`([^`]+)`/g, (match, code) => {
+      return '<code class="px-1.5 py-0.5 rounded bg-dark-bg-tertiary text-accent-cyan font-mono text-[13px] border border-dark-border-subtle">' + code + '</code>'
+    })
 
     // Bold + Italic (***text***)
-    text = text.replace(/\*\*\*(.+?)\*\*\*/g, '<strong class="font-bold italic text-dark-text-primary">$1</strong>')
+    text = text.replace(/\*\*\*(.+?)\*\*\*/g, (match, content) => {
+      return '<strong class="font-bold italic text-dark-text-primary">' + content + '</strong>'
+    })
 
     // Bold (**text**)
-    text = text.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-dark-text-primary">$1</strong>')
+    text = text.replace(/\*\*(.+?)\*\*/g, (match, content) => {
+      return '<strong class="font-semibold text-dark-text-primary">' + content + '</strong>'
+    })
 
     // Italic (*text* or _text_)
-    text = text.replace(/\*(.+?)\*/g, '<em class="italic text-dark-text-secondary">$1</em>')
-    text = text.replace(/_(.+?)_/g, '<em class="italic text-dark-text-secondary">$1</em>')
+    text = text.replace(/\*(.+?)\*/g, (match, content) => {
+      return '<em class="italic text-dark-text-secondary">' + content + '</em>'
+    })
+    text = text.replace(/_(.+?)_/g, (match, content) => {
+      return '<em class="italic text-dark-text-secondary">' + content + '</em>'
+    })
 
     // Links [text](url)
-    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-primary-400 hover:text-primary-300 underline" target="_blank" rel="noopener noreferrer">$1</a>')
+    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, linkText, url) => {
+      return '<a href="' + url + '" class="text-primary-400 hover:text-primary-300 underline" target="_blank" rel="noopener noreferrer">' + linkText + '</a>'
+    })
 
     return text
   }
