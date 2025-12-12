@@ -26,6 +26,8 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
   const [showConfetti, setShowConfetti] = useState(false)
   const [cardExiting, setCardExiting] = useState(null)
   const [cardEntering, setCardEntering] = useState(false)
+  const [swipeDirection, setSwipeDirection] = useState(null) // 'left' | 'right' | null
+  const [swipeIntensity, setSwipeIntensity] = useState(0) // 0-1 based on threshold
 
   // Session timing
   const [sessionStartTime] = useState(Date.now())
@@ -48,10 +50,17 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
     if (!isDragging) return
     const diff = clientX - dragStartX.current
     setDragOffset(diff)
+
+    // Calculate swipe intensity for visual feedback
+    const intensity = Math.min(Math.abs(diff) / 100, 1)
+    setSwipeIntensity(intensity)
+    setSwipeDirection(diff > 20 ? 'right' : diff < -20 ? 'left' : null)
   }
 
   const handleDragEnd = () => {
     setIsDragging(false)
+    setSwipeDirection(null)
+    setSwipeIntensity(0)
 
     // Swipe threshold
     const threshold = 100
@@ -331,7 +340,19 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
               : cardEntering
               ? 'translateX(0) rotate(0deg) scale(0.9)'
               : `translateX(${dragOffset}px) rotate(${dragOffset * 0.05}deg)`,
-            opacity: cardExiting ? 0 : cardEntering ? 1 : isDragging ? 0.9 : 1
+            opacity: cardExiting ? 0 : cardEntering ? 1 : isDragging ? 0.9 : 1,
+            background: swipeDirection === 'right'
+              ? `rgba(16, 185, 129, ${swipeIntensity * 0.12})` // green tint for mastered
+              : swipeDirection === 'left'
+              ? `rgba(245, 158, 11, ${swipeIntensity * 0.12})` // amber tint for needs work
+              : 'transparent',
+            borderRadius: '1.5rem',
+            border: swipeDirection
+              ? `3px solid ${swipeDirection === 'right'
+                  ? `rgba(16, 185, 129, ${swipeIntensity * 0.6})`
+                  : `rgba(245, 158, 11, ${swipeIntensity * 0.6})`}`
+              : '3px solid transparent',
+            transition: isDragging ? 'none' : 'background 0.15s, border 0.15s'
           }}
           onTouchStart={(e) => !cardExiting && handleDragStart(e.touches[0].clientX)}
           onTouchMove={(e) => !cardExiting && handleDragMove(e.touches[0].clientX)}
@@ -346,6 +367,37 @@ const StudySession = ({ deckId, cards, onComplete, onExit }) => {
             }
           }}
         >
+          {/* Swipe feedback icons overlay */}
+          <div className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center">
+            {/* Mastered checkmark - appears on right swipe */}
+            <div
+              className="absolute w-20 h-20 rounded-full bg-green-500/90 flex items-center justify-center shadow-lg backdrop-blur-sm"
+              style={{
+                opacity: swipeDirection === 'right' ? swipeIntensity : 0,
+                transform: `scale(${swipeDirection === 'right' ? 0.7 + swipeIntensity * 0.5 : 0.5})`,
+                transition: 'opacity 0.12s ease-out, transform 0.12s ease-out'
+              }}
+            >
+              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+
+            {/* Needs work retry icon - appears on left swipe */}
+            <div
+              className="absolute w-20 h-20 rounded-full bg-amber-500/90 flex items-center justify-center shadow-lg backdrop-blur-sm"
+              style={{
+                opacity: swipeDirection === 'left' ? swipeIntensity : 0,
+                transform: `scale(${swipeDirection === 'left' ? 0.7 + swipeIntensity * 0.5 : 0.5})`,
+                transition: 'opacity 0.12s ease-out, transform 0.12s ease-out'
+              }}
+            >
+              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </div>
+          </div>
+
           <FlashCard card={currentCard} showDifficulty={true} />
         </div>
 

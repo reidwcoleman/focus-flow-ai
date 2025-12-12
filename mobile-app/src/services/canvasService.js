@@ -82,13 +82,14 @@ export const canvasService = {
 
       return await response.json()
     } catch (error) {
-      console.error('Canvas API request failed:', error)
-
-      // Check if it's a CORS error
+      // Check if it's a CORS error (expected in browser)
       if (error.message.includes('CORS') || error.name === 'TypeError') {
-        throw new Error('CORS error: Canvas may be blocking requests. Try using your institution\'s Canvas URL (e.g., canvas.school.edu)')
+        // Silently fail for CORS errors - this is expected from GitHub Pages
+        throw new Error('Canvas CORS: Browser blocked. Use Canvas directly at canvas.wcpss.net')
       }
 
+      // Log other errors
+      console.error('Canvas API request failed:', error)
       throw error
     }
   },
@@ -134,13 +135,19 @@ export const canvasService = {
 
           allAssignments.push(...transformedAssignments)
         } catch (error) {
-          console.error(`Failed to fetch assignments for course ${course.id}:`, error)
+          // Silently skip CORS errors
+          if (!error.message.includes('CORS')) {
+            console.error(`Failed to fetch assignments for course ${course.id}:`, error)
+          }
         }
       }
 
       return allAssignments
     } catch (error) {
-      console.error('Failed to fetch Canvas assignments:', error)
+      // Silently fail for CORS errors (expected from GitHub Pages)
+      if (!error.message.includes('CORS')) {
+        console.error('Failed to fetch Canvas assignments:', error)
+      }
       return []
     }
   },
@@ -170,13 +177,19 @@ export const canvasService = {
             }
           }
         } catch (error) {
-          console.error(`Failed to fetch grades for course ${course.id}:`, error)
+          // Silently skip CORS errors
+          if (!error.message.includes('CORS')) {
+            console.error(`Failed to fetch grades for course ${course.id}:`, error)
+          }
         }
       }
 
       return grades
     } catch (error) {
-      console.error('Failed to fetch Canvas grades:', error)
+      // Silently fail for CORS errors (expected from GitHub Pages)
+      if (!error.message.includes('CORS')) {
+        console.error('Failed to fetch Canvas grades:', error)
+      }
       return []
     }
   },

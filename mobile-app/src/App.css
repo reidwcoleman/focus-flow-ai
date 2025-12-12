@@ -87,6 +87,75 @@
 }
 
 /* =============================================
+   FLASHCARD ANIMATIONS - Tinder-style swipes
+   ============================================= */
+
+/* Card fly-out right (mastered) - follows natural swipe momentum */
+@keyframes card-exit-right {
+  0% {
+    transform: translateX(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  25% {
+    transform: translateX(40px) rotate(6deg) scale(1.02);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(120%) rotate(22deg) scale(0.85);
+    opacity: 0;
+  }
+}
+
+/* Card fly-out left (needs work) - mirrors right animation */
+@keyframes card-exit-left {
+  0% {
+    transform: translateX(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  25% {
+    transform: translateX(-40px) rotate(-6deg) scale(1.02);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-120%) rotate(-22deg) scale(0.85);
+    opacity: 0;
+  }
+}
+
+/* New card entrance - spring-like bounce from below */
+@keyframes card-enter-spring {
+  0% {
+    transform: translateY(60px) scale(0.88);
+    opacity: 0;
+  }
+  50% {
+    transform: translateY(-8px) scale(1.02);
+    opacity: 1;
+  }
+  75% {
+    transform: translateY(3px) scale(0.99);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-card-exit-right {
+  animation: card-exit-right 0.38s cubic-bezier(0.32, 0, 0.67, 0) forwards;
+  pointer-events: none;
+}
+
+.animate-card-exit-left {
+  animation: card-exit-left 0.38s cubic-bezier(0.32, 0, 0.67, 0) forwards;
+  pointer-events: none;
+}
+
+.animate-card-enter-spring {
+  animation: card-enter-spring 0.4s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+/* =============================================
    OPAL-STYLE ANIMATIONS - Focus Mode
    ============================================= */
 

@@ -135,6 +135,65 @@ class VisionService {
   }
 
   /**
+   * Process homework assignment image into structured assignment data
+   * @param {string} base64Image - Base64 encoded image
+   * @returns {Promise<{title: string, subject: string, dueDate: string, description: string, estimatedTime: string, priority: string, confidence: number}>}
+   */
+  async processHomeworkAssignment(base64Image) {
+    const cleanBase64 = this._cleanBase64(base64Image)
+
+    if (!this.isConfigured) {
+      console.warn('Groq API key not configured, using demo mode')
+      return this._getDemoHomeworkResponse()
+    }
+
+    const prompt = this._getHomeworkPrompt()
+
+    try {
+      const response = await fetch(VISION_CONFIG.groqEndpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${VISION_CONFIG.groqApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: VISION_CONFIG.visionModel,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: prompt },
+                {
+                  type: 'image_url',
+                  image_url: {
+                    url: `data:image/jpeg;base64,${cleanBase64}`
+                  }
+                }
+              ]
+            }
+          ],
+          max_tokens: VISION_CONFIG.maxTokens,
+          temperature: 0.2 // Very low for consistent extraction
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error?.message || `Groq API error: ${response.status}`)
+      }
+
+      const data = await response.json()
+      const aiResponse = data.choices[0].message.content
+
+      // Parse JSON response from AI
+      return this._parseHomeworkResponse(aiResponse)
+    } catch (error) {
+      console.error('Vision service error (homework):', error)
+      throw new Error(`Failed to process homework: ${error.message}`)
+    }
+  }
+
+  /**
    * Generic OCR text extraction
    * @param {string} base64Image - Base64 encoded image
    * @returns {Promise<{text: string, confidence: number}>}
@@ -274,6 +333,53 @@ Focus on active recall and understanding.`
   }
 
   /**
+   * Prompt for homework assignment extraction
+   */
+  _getHomeworkPrompt() {
+    const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+
+    return `You are an expert at analyzing homework assignments and extracting key information.
+
+Analyze this homework assignment image and extract the following information:
+- Title/name of the assignment
+- Subject (Math, Chemistry, English, History, Physics, etc.)
+- Due date (if visible) - format as YYYY-MM-DD
+- Description/requirements of the assignment
+- Estimated time to complete (e.g., "1h 30m", "2h", "45m")
+- Priority level based on due date and complexity (low, medium, high)
+
+TODAY'S DATE: ${today}
+
+INSTRUCTIONS:
+1. Read ALL text carefully from the image
+2. Look for:
+   - Assignment titles or headings
+   - Due dates, deadlines, or "Due:" labels
+   - Subject names or class names
+   - Instructions, requirements, or questions to answer
+   - Page numbers, chapter references, problem numbers
+3. Estimate time based on complexity and length
+4. Set priority:
+   - HIGH: Due within 2 days or complex/long assignments
+   - MEDIUM: Due within a week or moderate difficulty
+   - LOW: Due later or quick/simple assignments
+
+Return your response as a JSON object:
+{
+  "title": "Assignment name or topic",
+  "subject": "Subject area",
+  "dueDate": "YYYY-MM-DD or null if not found",
+  "description": "Clear summary of what needs to be done",
+  "estimatedTime": "1h 30m",
+  "priority": "low | medium | high",
+  "confidence": 0.95
+}
+
+If you can't find certain information, make educated guesses based on context.
+BE ACCURATE with dates - if you see "Due: 12/15", convert it to proper YYYY-MM-DD format.`
+  }
+
+  /**
    * Parse AI response for notes extraction
    */
   _parseNotesResponse(aiResponse) {
@@ -380,6 +486,66 @@ Focus on active recall and understanding.`
         title: 'Error Deck',
         subject: 'General'
       }
+    }
+  }
+
+  /**
+   * Parse AI response for homework assignment
+   */
+  _parseHomeworkResponse(aiResponse) {
+    try {
+      // Try to extract JSON from response
+      const jsonMatch = aiResponse.match(/```json\s*([\s\S]*?)\s*```/) ||
+                        aiResponse.match(/\{[\s\S]*\}/)
+
+      if (!jsonMatch) {
+        throw new Error('No JSON found in response')
+      }
+
+      const jsonStr = jsonMatch[1] || jsonMatch[0]
+      const parsed = JSON.parse(jsonStr)
+
+      // Ensure required fields
+      return {
+        title: parsed.title || 'Untitled Assignment',
+        subject: parsed.subject || 'General',
+        dueDate: parsed.dueDate || null,
+        description: parsed.description || 'No description provided',
+        estimatedTime: parsed.estimatedTime || '1h',
+        priority: parsed.priority || 'medium',
+        confidence: parsed.confidence || 0.85
+      }
+    } catch (error) {
+      console.error('Failed to parse homework response:', error)
+      // Fallback: create a generic assignment
+      return {
+        title: 'Assignment Detected',
+        subject: 'General',
+        dueDate: null,
+        description: 'Please review the scanned image for details',
+        estimatedTime: '1h',
+        priority: 'medium',
+        confidence: 0.5
+      }
+    }
+  }
+
+  /**
+   * Demo mode response for homework
+   */
+  _getDemoHomeworkResponse() {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 3)
+    const dueDate = tomorrow.toISOString().split('T')[0]
+
+    return {
+      title: 'Chemistry Lab Report: Acid-Base Titration',
+      subject: 'Chemistry',
+      dueDate: dueDate,
+      description: 'Complete lab report analyzing the titration of HCl with NaOH. Include calculations, observations, and error analysis. Submit both handwritten data tables and typed analysis.',
+      estimatedTime: '2h 30m',
+      priority: 'high',
+      confidence: 0.95
     }
   }
 
