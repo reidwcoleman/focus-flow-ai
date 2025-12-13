@@ -6,7 +6,7 @@
 const VISION_CONFIG = {
   groqApiKey: import.meta.env.VITE_GROQ_API_KEY || '',
   groqEndpoint: 'https://api.groq.com/openai/v1/chat/completions',
-  visionModel: 'llama-3.2-11b-vision-preview', // Groq's latest stable vision model
+  visionModel: 'meta-llama/llama-4-scout-17b-16e-instruct', // Llama 4 Scout - Latest vision model
   maxTokens: 2000,
   temperature: 0.2, // Lower for more consistent extraction
 }
